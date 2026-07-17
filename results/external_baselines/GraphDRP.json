@@ -1,0 +1,25 @@
+{
+  "method": "GraphDRP",
+  "tier": 2,
+  "year": 2022,
+  "venue": "Bioinformatics",
+  "paper": "Nguyen et al., 2022",
+  "github": "https://github.com/hauldhut/GraphDRP",
+  "input_features": [
+    "expression"
+  ],
+  "drug_features": [
+    "drug_SMILES_graph"
+  ],
+  "status": "requires_manual_integration",
+  "notes": "GNN-based drug response prediction",
+  "integration_status": {
+    "has_train_script": false,
+    "has_requirements": false,
+    "has_readme": true,
+    "can_auto_run": false,
+    "notes": "Requires expression matrix + drug SMILES molecular graphs. Most straightforward integration."
+  },
+  "integration_notes": "Requires expression matrix + drug SMILES molecular graphs. Most straightforward integration.",
+  "fallback": "report_published_numbers"
+}

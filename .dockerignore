@@ -1,0 +1,40 @@
+# ── Virtual environments ──
+.venv/
+venv/
+env/
+
+# ── Data (mount at runtime instead) ──
+data/
+
+# ── IDE / OS ──
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── Python bytecode ──
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ── Git ──
+.git/
+.gitignore
+
+# ── Benchmarks (cloned external repos — large) ──
+benchmarks/
+
+# ── Research artifacts ──
+research/
+
+# ── Lock files ──
+uv.lock
+
+# ── Docker itself ──
+Dockerfile
+.dockerignore

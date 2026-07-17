@@ -1,0 +1,17 @@
+{
+  "method": "HiDRA",
+  "tier": 1,
+  "year": 2023,
+  "venue": "Nature Communications",
+  "paper": "Jin et al., 2023",
+  "github": "https://github.com/DMCB-GIST/HiDRA",
+  "input_features": [
+    "expression_geneset"
+  ],
+  "drug_features": [
+    "drug_fingerprints"
+  ],
+  "status": "clone_failed",
+  "notes": "Hierarchical gene-set-level DRP",
+  "fallback": "report_published_numbers"
+}

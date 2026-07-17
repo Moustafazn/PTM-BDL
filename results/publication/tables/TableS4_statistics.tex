@@ -1,0 +1,32 @@
+\begin{table}[htbp]
+\centering
+\caption{Statistical tests for benchmarking comparison. DeLong test (paired AUROC comparison) and Benjamini-Hochberg multiple testing correction. ★ indicates significance at α=0.05.}
+\label{tab:s4_stats}
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+\textbf{Method} & \textbf{Comparison} & \textbf{AUROC_A} & \textbf{AUROC_B} & \textbf{Δ} & \textbf{Statistic} & \textbf{p-value} & \textbf{Sig (α=0.05)} \\
+\midrule
+DeLong AUROC & Ours vs xgboost & 0.909 & 0.927 & -0.018 & -0.526 & 0.599 &  \\
+DeLong AUROC & Ours vs elastic_net & 0.909 & 0.941 & -0.032 & -1.062 & 0.288 &  \\
+DeLong AUROC & Ours vs ridge & 0.909 & 0.941 & -0.032 & -1.062 & 0.288 &  \\
+DeLong AUROC & Ours vs random_forest & 0.909 & 0.889 & 0.020 & 0.664 & 0.507 &  \\
+BH-corrected & wilcoxon_ours_vs_ridge_pearson_r & — & — & — & — & 0.375 &  \\
+BH-corrected & wilcoxon_ours_vs_elastic_net_pearson_r & — & — & — & — & 0.375 &  \\
+BH-corrected & wilcoxon_ours_vs_random_forest_pearson_r & — & — & — & — & 0.562 &  \\
+BH-corrected & wilcoxon_ours_vs_xgboost_auroc & — & — & — & — & 0.562 &  \\
+BH-corrected & delong_ours_vs_elastic_net & — & — & — & — & 0.562 &  \\
+BH-corrected & delong_ours_vs_ridge & — & — & — & — & 0.562 &  \\
+BH-corrected & wilcoxon_ours_vs_ridge_auroc & — & — & — & — & 0.562 &  \\
+BH-corrected & wilcoxon_ours_vs_elastic_net_auroc & — & — & — & — & 0.562 &  \\
+BH-corrected & delong_ours_vs_random_forest & — & — & — & — & 0.625 &  \\
+BH-corrected & wilcoxon_ours_vs_xgboost_pearson_r & — & — & — & — & 0.625 &  \\
+BH-corrected & delong_ours_vs_xgboost & — & — & — & — & 0.625 &  \\
+BH-corrected & wilcoxon_ours_vs_random_forest_auroc & — & — & — & — & 0.625 &  \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\begin{minipage}{\textwidth}
+\footnotesize DeLong test: Biometrics 1988. BH correction: following SAGE-net (Nat Methods 2026) benchmarking protocol.
+\end{minipage}
+\end{table}

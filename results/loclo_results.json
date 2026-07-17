@@ -1,0 +1,32 @@
+{
+  "method": "Leave-One-Cell-Line-Out (LOCLO) by mutation class",
+  "reference": "Sada Del Real et al., Brief Bioinf 2026 \u2014 'cell-blind split for precision medicine'",
+  "grouping": "mutation_class (EGFR) / amplification_status (HER2)",
+  "min_group_size": 10,
+  "per_group_results": {
+    "HER2_other": {
+      "group": "HER2_other",
+      "status": "failed",
+      "error": "'ic50'",
+      "training_time_seconds": 16838.1
+    },
+    "wild_type": {
+      "group": "wild_type",
+      "status": "failed",
+      "error": "'ic50'",
+      "training_time_seconds": 12743.6
+    }
+  },
+  "summary": {
+    "n_groups_total": 2,
+    "n_groups_evaluated": 2,
+    "n_groups_skipped": 0,
+    "skipped_groups": [],
+    "random_split_pearson_r": 0.6143841561780392,
+    "random_split_auroc": 0.9090330788804071
+  },
+  "interpretation": {
+    "purpose": "Tests whether PTM-BDL generalizes to mutation classes not seen during training. A large generalization gap (>0.1 PCC) would indicate the model memorizes mutation-specific patterns rather than learning generalizable PTM\u2192resistance mapping.",
+    "expected_finding": "Some performance drop is expected and acceptable. The key question is whether PTM-BDL drops less than ML baselines, suggesting PTM features provide transferable biological signal."
+  }
+}

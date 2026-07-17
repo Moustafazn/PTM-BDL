@@ -1,0 +1,62 @@
+[project]
+name = "ptm-bdl-framework"
+version = "0.1.0"
+description = "Multimodal Self-Attention with PTM Biological Dynamics Layer for Drug Response Prediction"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Moustafa Zein"},
+    {name = "Aboul Ella Hassanien"},
+]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    # ── Core Scientific Stack ──
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "scikit-learn>=1.3",
+    "biopython>=1.84",
+
+    # ── Deep Learning ──
+    "torch>=2.1",
+    "transformers>=4.36",       # ESM-2 and ChemBERTa model loading
+    "tokenizers>=0.15",
+
+    # ── Protein Structure (ESM-IF1 backend for step08) ──
+    "fair-esm>=2.0.0",         # ESM-2 (step07) + ESM-IF1 structural encoder (step08)
+    "biotite>=1.0",            # PDB parsing for ESM-IF1
+
+    # ── Data & Visualization ──
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "openpyxl>=3.1",            # Excel file reading (GDSC data)
+    "requests>=2.31",           # HTTP downloads
+    "tqdm>=4.66",               # Progress bars
+    "pyyaml>=6.0",              # Config loading
+    "certifi",                  # SSL certificates (macOS fix for model downloads)
+
+    # ── Benchmarking / ML Baselines ──
+    "xgboost>=2.0",             # Gradient boosting baseline (step14a)
+]
+
+[project.optional-dependencies]
+# PyTorch Geometric for the GearNet structural backend (step08 fallback).
+# Requires torch installed first. Install with:
+#   pip install torch-geometric -f https://data.pyg.org/whl/torch-2.12.0+cpu.html
+structural = [
+    "torch-geometric>=2.4",
+]
+
+gpu = [
+    "accelerate>=0.25",
+]
+
+
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,223 @@
+{
+  "run_date": "2026-07-06 18:19:28",
+  "n_methods": 4,
+  "n_completed": 0,
+  "n_manual_integration": 1,
+  "n_failed": 3,
+  "methods": {
+    "DIPK": {
+      "method": "DIPK",
+      "tier": 1,
+      "year": 2024,
+      "venue": "Nature Communications",
+      "paper": "Li et al., 2024",
+      "github": "https://github.com/user-wu/DIPK",
+      "input_features": [
+        "expression",
+        "mutation",
+        "methylation",
+        "CNV",
+        "PPI_network"
+      ],
+      "drug_features": [
+        "drug_fingerprints"
+      ],
+      "status": "clone_failed",
+      "notes": "DL + PPI network integration",
+      "fallback": "report_published_numbers",
+      "published_performance": {
+        "source": "Li et al., Nature Communications 2024, Table 1",
+        "dataset": "GDSC2 (full, ~170K samples)",
+        "metrics": {
+          "pearson_r": 0.92,
+          "rmse": null,
+          "spearman_rho": 0.893
+        },
+        "caveat": "Evaluated on full GDSC2 (~170K samples across all drugs/cell lines). Our subset is 951 samples for 6 TKI drugs \u00d7 EGFR/ERBB2 cell lines only. Direct comparison is not valid \u2014 included for context."
+      }
+    },
+    "HiDRA": {
+      "method": "HiDRA",
+      "tier": 1,
+      "year": 2023,
+      "venue": "Nature Communications",
+      "paper": "Jin et al., 2023",
+      "github": "https://github.com/DMCB-GIST/HiDRA",
+      "input_features": [
+        "expression_geneset"
+      ],
+      "drug_features": [
+        "drug_fingerprints"
+      ],
+      "status": "clone_failed",
+      "notes": "Hierarchical gene-set-level DRP",
+      "fallback": "report_published_numbers",
+      "published_performance": {
+        "source": "Jin et al., Nature Communications 2023, Table 1",
+        "dataset": "GDSC2 (full)",
+        "metrics": {
+          "pearson_r": 0.907,
+          "rmse": null,
+          "spearman_rho": null
+        },
+        "caveat": "Same caveat as DIPK \u2014 full GDSC2, not our subset."
+      }
+    },
+    "GraTransDRP": {
+      "method": "GraTransDRP",
+      "tier": 1,
+      "year": 2023,
+      "venue": "Briefings in Bioinformatics",
+      "paper": "Li et al., 2023",
+      "github": "https://github.com/cnellington/GraTransDRP",
+      "input_features": [
+        "expression",
+        "mutation"
+      ],
+      "drug_features": [
+        "drug_SMILES_graph"
+      ],
+      "status": "clone_failed",
+      "notes": "Graph Transformer for drug molecules",
+      "fallback": "report_published_numbers",
+      "published_performance": {
+        "source": "Li et al., Brief Bioinf 2023, Table 2",
+        "dataset": "GDSC (full)",
+        "metrics": {
+          "pearson_r": 0.913,
+          "rmse": 1.061
+        },
+        "caveat": "Full GDSC dataset, all drugs and cell lines."
+      }
+    },
+    "GraphDRP": {
+      "method": "GraphDRP",
+      "tier": 2,
+      "year": 2022,
+      "venue": "Bioinformatics",
+      "paper": "Nguyen et al., 2022",
+      "github": "https://github.com/hauldhut/GraphDRP",
+      "input_features": [
+        "expression"
+      ],
+      "drug_features": [
+        "drug_SMILES_graph"
+      ],
+      "status": "requires_manual_integration",
+      "notes": "GNN-based drug response prediction",
+      "integration_status": {
+        "has_train_script": false,
+        "has_requirements": false,
+        "has_readme": true,
+        "can_auto_run": false,
+        "notes": "Requires expression matrix + drug SMILES molecular graphs. Most straightforward integration."
+      },
+      "integration_notes": "Requires expression matrix + drug SMILES molecular graphs. Most straightforward integration.",
+      "fallback": "report_published_numbers",
+      "published_performance": {
+        "source": "Nguyen et al., Bioinformatics 2022, Table 2",
+        "dataset": "GDSC (full)",
+        "metrics": {
+          "pearson_r": 0.897,
+          "rmse": 1.114
+        },
+        "caveat": "Full GDSC dataset."
+      }
+    }
+  },
+  "published_performance": {
+    "DIPK": {
+      "source": "Li et al., Nature Communications 2024, Table 1",
+      "dataset": "GDSC2 (full, ~170K samples)",
+      "metrics": {
+        "pearson_r": 0.92,
+        "rmse": null,
+        "spearman_rho": 0.893
+      },
+      "caveat": "Evaluated on full GDSC2 (~170K samples across all drugs/cell lines). Our subset is 951 samples for 6 TKI drugs \u00d7 EGFR/ERBB2 cell lines only. Direct comparison is not valid \u2014 included for context."
+    },
+    "HiDRA": {
+      "source": "Jin et al., Nature Communications 2023, Table 1",
+      "dataset": "GDSC2 (full)",
+      "metrics": {
+        "pearson_r": 0.907,
+        "rmse": null,
+        "spearman_rho": null
+      },
+      "caveat": "Same caveat as DIPK \u2014 full GDSC2, not our subset."
+    },
+    "GraTransDRP": {
+      "source": "Li et al., Brief Bioinf 2023, Table 2",
+      "dataset": "GDSC (full)",
+      "metrics": {
+        "pearson_r": 0.913,
+        "rmse": 1.061
+      },
+      "caveat": "Full GDSC dataset, all drugs and cell lines."
+    },
+    "TransCDR": {
+      "source": "Xia et al., Brief Bioinf 2023, Table 1",
+      "dataset": "GDSC2 (full)",
+      "metrics": {
+        "pearson_r": 0.914,
+        "rmse": null
+      },
+      "caveat": "Full GDSC2 dataset."
+    },
+    "PathDSP": {
+      "source": "Tang et al., Bioinformatics 2024",
+      "dataset": "GDSC (full)",
+      "metrics": {
+        "pearson_r": null,
+        "rmse": null
+      },
+      "caveat": "Pathway-based method; metrics vary by evaluation."
+    },
+    "GraphDRP": {
+      "source": "Nguyen et al., Bioinformatics 2022, Table 2",
+      "dataset": "GDSC (full)",
+      "metrics": {
+        "pearson_r": 0.897,
+        "rmse": 1.114
+      },
+      "caveat": "Full GDSC dataset."
+    },
+    "DrugCell": {
+      "source": "Kuenzi et al., Cancer Cell 2020, Figure 2",
+      "dataset": "GDSC (full)",
+      "metrics": {
+        "pearson_r": 0.858,
+        "spearman_rho": 0.849
+      },
+      "caveat": "Full GDSC, GO-hierarchy-based architecture."
+    },
+    "DeepCDR": {
+      "source": "Li et al., Brief Bioinf 2020, Table 1",
+      "dataset": "GDSC (full)",
+      "metrics": {
+        "pearson_r": 0.916,
+        "rmse": 1.03
+      },
+      "caveat": "Full GDSC dataset, multi-omics input."
+    }
+  },
+  "our_model_metrics": {
+    "pearson_r": 0.6143841561780392,
+    "rmse": 1.760182209842755,
+    "auroc": 0.9090330788804071,
+    "auprc_sensitive": 0,
+    "balanced_acc": 0.7178753180661577
+  },
+  "data_info": {
+    "dataset": "GDSC2 IC50 for 6 TKI drugs \u00d7 EGFR/ERBB2 cell lines",
+    "n_samples": 951,
+    "n_test": 143,
+    "split": "70/15/15 stratified by resistance_label \u00d7 target_protein"
+  },
+  "fairness_protocol": {
+    "data": "All methods evaluated on identical biological samples",
+    "split": "Same split_indices.json for all methods",
+    "hyperparams": "Published default hyperparameters (no tuning)",
+    "reference": "Benchmarking Plan \u00a75"
+  }
+}

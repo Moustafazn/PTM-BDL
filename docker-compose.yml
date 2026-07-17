@@ -1,0 +1,162 @@
+# ============================================================================
+# docker-compose.yml — PTM-Driven Multimodal Self-Attention
+# ============================================================================
+# One-command reproducible execution for Nature Methods reviewers.
+#
+# Usage:
+#   docker compose up              — Run full pipeline (data → train → benchmark → figures)
+#   docker compose up train        — Train only
+#   docker compose up benchmark    — Benchmarking only
+#   docker compose up figures      — Publication figures & tables only
+#   docker compose run shell       — Interactive bash shell
+#
+# GPU support:
+#   docker compose --profile gpu up
+# ============================================================================
+
+services:
+
+  # ── Full Pipeline (default) ────────────────────────────────────────────────
+  pipeline:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-pipeline
+    command: make all
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  # ── Individual Phases ──────────────────────────────────────────────────────
+
+  data:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-data
+    command: make data
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [data]
+
+  harmonize:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-harmonize
+    command: make harmonize
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [harmonize]
+
+  features:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-features
+    command: make features
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [features]
+
+  train:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-train
+    command: make train
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [train]
+
+  evaluate:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-evaluate
+    command: make evaluate
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [evaluate]
+
+  benchmark:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-benchmark
+    command: make benchmark
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [benchmark]
+
+  figures:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-figures
+    command: make figures
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [figures]
+
+  test:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-test
+    command: make test
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [test]
+
+  # ── Interactive Shell ──────────────────────────────────────────────────────
+  shell:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-shell
+    stdin_open: true
+    tty: true
+    command: bash
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [shell]
+
+  # ── GPU Pipeline (NVIDIA) ──────────────────────────────────────────────────
+  pipeline-gpu:
+    build:
+      context: .
+      args:
+        BASE_IMAGE: pytorch/pytorch:2.4.1-cuda12.4-cudnn9-runtime
+    image: ptm-bdl-gpu:latest
+    container_name: ptm-bdl-gpu
+    command: make all
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles: [gpu]

@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: >-
+  Multimodal Self-Attention with PTM Biological Dynamics Layer:
+  A PTM Foundational Framework for Drug Response Prediction
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Moustafa
+    family-names: Zein
+  - given-names: Aboul Ella
+    family-names: Hassanien
+repository-code: >-
+  https://github.com/Moustafazn/PTM-BDL-Framework
+license: MIT
+date-released: "2026-07-01"
+keywords:
+  - drug resistance
+  - multimodal learning
+  - self-attention
+  - transformer
+  - post-translational modifications
+  - phosphoproteomics
+  - glycoproteomics
+  - EGFR
+  - HER2
+  - ERBB2
+  - tyrosine kinase inhibitors
+  - osimertinib
+  - deep learning
+  - cancer
+  - precision oncology

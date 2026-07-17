@@ -1,0 +1,115 @@
+{
+  "method": "Randomized PTM control \u2014 per-channel + combined",
+  "reference_full_metrics": {
+    "accuracy": 0.5524475524475524,
+    "balanced_acc": 0.7178753180661577,
+    "sensitivity": 0.5190839694656488,
+    "specificity": 0.9166666666666666,
+    "f1": 0.68,
+    "f1_sensitive": 0.2558139534883721,
+    "f1_macro": 0.4679069767441861,
+    "auroc": 0.9090330788804071,
+    "auprc_resistant": 0.9896651394071319,
+    "auprc_sensitive": 0.6673309178743962,
+    "mean_prob": 0.46879481597171796,
+    "tp": 68,
+    "tn": 11,
+    "fp": 1,
+    "fn": 63,
+    "mse": 3.098241411846925,
+    "rmse": 1.760182209842755,
+    "pearson_r": 0.6143841561780393,
+    "loss": 3.203764730029636
+  },
+  "arms": {
+    "phospho_shuffled": {
+      "shuffled_metrics": {
+        "accuracy": 0.5524475524475524,
+        "balanced_acc": 0.7178753180661577,
+        "sensitivity": 0.5190839694656488,
+        "specificity": 0.9166666666666666,
+        "f1": 0.68,
+        "f1_sensitive": 0.2558139534883721,
+        "f1_macro": 0.4679069767441861,
+        "auroc": 0.8915394402035624,
+        "auprc_resistant": 0.9856007902881416,
+        "auprc_sensitive": 0.6579445246111914,
+        "mean_prob": 0.44124120525963656,
+        "tp": 68,
+        "tn": 11,
+        "fp": 1,
+        "fn": 63,
+        "mse": 3.252802093049668,
+        "rmse": 1.8035526310728134,
+        "pearson_r": 0.6324952133692641,
+        "loss": 3.3803500599331326
+      },
+      "drops": {
+        "drop_auroc": 0.0175,
+        "drop_bacc": 0.0,
+        "drop_auprc_sensitive": 0.0094,
+        "drop_rmse": 0.0434
+      }
+    },
+    "glyco_shuffled": {
+      "shuffled_metrics": {
+        "accuracy": 0.5524475524475524,
+        "balanced_acc": 0.7178753180661577,
+        "sensitivity": 0.5190839694656488,
+        "specificity": 0.9166666666666666,
+        "f1": 0.68,
+        "f1_sensitive": 0.2558139534883721,
+        "f1_macro": 0.4679069767441861,
+        "auroc": 0.864821882951654,
+        "auprc_resistant": 0.9819407608553146,
+        "auprc_sensitive": 0.6397572367993685,
+        "mean_prob": 0.4697003269737417,
+        "tp": 68,
+        "tn": 11,
+        "fp": 1,
+        "fn": 63,
+        "mse": 2.6750985224298622,
+        "rmse": 1.6355728422879436,
+        "pearson_r": 0.6977990850972657,
+        "loss": 2.776641527811686
+      },
+      "drops": {
+        "drop_auroc": 0.0442,
+        "drop_bacc": 0.0,
+        "drop_auprc_sensitive": 0.0276,
+        "drop_rmse": -0.1246
+      }
+    },
+    "both_shuffled": {
+      "shuffled_metrics": {
+        "accuracy": 0.5524475524475524,
+        "balanced_acc": 0.7178753180661577,
+        "sensitivity": 0.5190839694656488,
+        "specificity": 0.9166666666666666,
+        "f1": 0.68,
+        "f1_sensitive": 0.2558139534883721,
+        "f1_macro": 0.4679069767441861,
+        "auroc": 0.8975826972010179,
+        "auprc_resistant": 0.9867977068846983,
+        "auprc_sensitive": 0.6825080427712258,
+        "mean_prob": 0.4597592176674129,
+        "tp": 68,
+        "tn": 11,
+        "fp": 1,
+        "fn": 63,
+        "mse": 2.5285046053047258,
+        "rmse": 1.5901272292822124,
+        "pearson_r": 0.6520360445043751,
+        "loss": 2.6455983320871987
+      },
+      "drops": {
+        "drop_auroc": 0.0115,
+        "drop_bacc": 0.0,
+        "drop_auprc_sensitive": -0.0152,
+        "drop_rmse": -0.1701
+      }
+    }
+  },
+  "primary_arm": "both_shuffled",
+  "primary_pass": false
+}

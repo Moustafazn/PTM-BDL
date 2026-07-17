@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{Full evaluation metrics (Tier C) for all methods. PCC = Pearson R, SCC = Spearman ρ, BAcc = Balanced Accuracy. All evaluated on the same test set (n=143).}
+\label{tab:s1_full}
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+\textbf{Method} & \textbf{PCC} & \textbf{SCC} & \textbf{RMSE} & \textbf{AUROC} & \textbf{AUPRC-res} & \textbf{AUPRC-sens} & \textbf{BAcc} \\
+\midrule
+Random Forest & 0.698 & 0.571 & 1.411 & 0.889 & 0.986 & 0.700 & 0.802 \\
+XGBoost & 0.628 & 0.553 & 1.534 & 0.927 & 0.992 & 0.640 & 0.829 \\
+Ridge & 0.715 & 0.554 & 1.383 & 0.941 & 0.994 & 0.733 & 0.810 \\
+Elastic Net & 0.715 & 0.553 & 1.383 & 0.941 & 0.994 & 0.733 & 0.810 \\
+Ours (PTM-BDL) & 0.614 & 0.439 & 1.760 & 0.909 & 0.990 & — & 0.718 \\
+\bottomrule
+\end{tabular}
+\end{table}

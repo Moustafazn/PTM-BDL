@@ -1,0 +1,22 @@
+\begin{table}[htbp]
+\centering
+\caption{Per-drug performance comparison. PCC (Pearson R) and AUROC for each of 6 TKI drugs. Critical drugs: Osimertinib (focal drug of this study), Lapatinib and Sapitinib (HER2-specific).}
+\label{tab:perdrug}
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+\textbf{Method} & \textbf{N_test} & \textbf{Ours_PCC} & \textbf{Ours_AUROC} & \textbf{RF_PCC} & \textbf{RF_AUROC} & \textbf{XGB_PCC} & \textbf{XGB_AUROC} \\
+\midrule
+Osimertinib & 33.000 & 0.593 & 0.922 & 0.694 & 0.948 & 0.608 & 0.966 \\
+Gefitinib & 28.000 & -0.025 & 0.944 & 0.266 & 0.870 & 0.254 & 0.944 \\
+Erlotinib & 37.000 & 0.626 & 1.000 & 0.684 & 1.000 & 0.678 & 1.000 \\
+Afatinib & 29.000 & 0.771 & 0.790 & 0.638 & 0.840 & 0.432 & 0.830 \\
+Lapatinib & 9.000 & -0.278 & 0.312 & -0.215 & 0.812 & -0.284 & 0.812 \\
+Sapitinib & 7.000 & 0.483 & 0.000 & 0.642 & 0.000 & 0.620 & 0.000 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\begin{minipage}{\textwidth}
+\footnotesize Per-drug Spearman correlation (SCC) is considered 'the most clinically relevant metric' by Sada Del Real et al., Brief Bioinf 2026.
+\end{minipage}
+\end{table}

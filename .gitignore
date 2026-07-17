@@ -1,0 +1,37 @@
+# ── IDE ──
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual environments ──
+.venv/
+venv/
+env/
+.python-version
+
+# ── Data (large files — not tracked) ──
+data/
+
+# ── OS artifacts ──
+.DS_Store
+Thumbs.db
+
+# ── Dependency lock (reproducible via pyproject.toml) ──
+uv.lock
+
+# ── Research artifacts (not for publication) ──
+research/
+
+# ── Benchmarking (cloned external repos — large) ──
+benchmarks/
+

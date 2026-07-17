@@ -1,0 +1,21 @@
+\begin{table}[htbp]
+\centering
+\caption{PTM-BDL biological validation. These tests evaluate whether the model learns biologically meaningful PTM patterns. No other method can be evaluated on these metrics — they validate PTM-BDL as a biological module.}
+\label{tab:biological}
+\small
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Method} & \textbf{Metric} & \textbf{Result} & \textbf{Pass?} \\
+\midrule
+PTM ablation (AUROC) & Full − baseline AUROC & +0.0363 & ✓ \\
+PTM ablation (AUPRC-s) & Full − baseline AUROC & +0.0634 & ✓ \\
+Phospho marginal & Full − baseline AUROC & +0.0146 & ✓ \\
+Glyco marginal & Full − baseline AUROC & +0.0264 & ✓ \\
+Typed attn vs MLP & Full − baseline AUROC & +0.0433 & ✓ \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+\begin{minipage}{\textwidth}
+\footnotesize IG = Integrated Gradients. Y1068/Y1221 are the GRB2→MAPK docking sites on EGFR/HER2 respectively. Marginal = Full model AUROC minus ablated model AUROC.
+\end{minipage}
+\end{table}

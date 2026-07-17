@@ -1,0 +1,18 @@
+{
+  "method": "GraTransDRP",
+  "tier": 1,
+  "year": 2023,
+  "venue": "Briefings in Bioinformatics",
+  "paper": "Li et al., 2023",
+  "github": "https://github.com/cnellington/GraTransDRP",
+  "input_features": [
+    "expression",
+    "mutation"
+  ],
+  "drug_features": [
+    "drug_SMILES_graph"
+  ],
+  "status": "clone_failed",
+  "notes": "Graph Transformer for drug molecules",
+  "fallback": "report_published_numbers"
+}
