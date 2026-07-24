@@ -1,9 +1,12 @@
 # ============================================================================
 # requirements-lock.txt — Pinned dependencies for reproducible Docker builds
 # ============================================================================
-# Generated from working venv (Python 3.11.9) on 2026-07-01.
+# Generated from working venv (Python 3.11.9) on 2026-07-08.
 # This file is used by the Dockerfile. For flexible installs, use
 # requirements.txt or pyproject.toml instead.
+#
+# After installing, also run:
+#   pip install torch-geometric -f https://data.pyg.org/whl/torch-2.12.0+cpu.html
 # ============================================================================
 
 # ── Core Scientific Stack ──
@@ -15,18 +18,17 @@ biopython==1.87
 
 # ── Deep Learning ──
 torch==2.12.0
-transformers==5.11.0
+transformers==5.10.2
 tokenizers==0.22.2
-safetensors==0.8.0
+safetensors==0.7.0
 
-# ── Protein Structure Encoders ──
+# ── Protein Structure Encoders (Step 08: ESM-IF1 pretrained backend) ──
 fair-esm==2.0.0
 biotite==1.6.0
 biotraj==1.2.2
-torch-geometric==2.8.0
 
 # ── Data & Visualization ──
-matplotlib==3.11.0
+matplotlib==3.10.9
 seaborn==0.13.2
 openpyxl==3.1.5
 requests==2.34.2
@@ -35,9 +37,8 @@ PyYAML==6.0.3
 certifi==2026.5.20
 pillow==12.2.0
 
-# ── Benchmarking (step14a ML baselines) ──
-# xgboost — install separately if needed:
-#   pip install xgboost>=2.0
+# ── Benchmarking (ML baselines) ──
+xgboost==2.1.4
 
 # ── Hugging Face ecosystem ──
 huggingface_hub==1.19.0
@@ -75,3 +76,7 @@ six==1.17.0
 pytest==9.1.1
 iniconfig==2.3.0
 pluggy==1.6.0
+
+# ── PyTorch Geometric (Step 08: GearNet structural backend) ──
+# Requires matching torch version. Install separately after pip install:
+#   pip install torch-geometric -f https://data.pyg.org/whl/torch-2.12.0+cpu.html

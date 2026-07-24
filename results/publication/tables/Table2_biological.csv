@@ -1,6 +1,0 @@
-Test,Metric,Result,Pass?
-PTM ablation (AUROC),Full − baseline AUROC,+0.0363,✓
-PTM ablation (AUPRC-s),Full − baseline AUROC,+0.0634,✓
-Phospho marginal,Full − baseline AUROC,+0.0146,✓
-Glyco marginal,Full − baseline AUROC,+0.0264,✓
-Typed attn vs MLP,Full − baseline AUROC,+0.0433,✓

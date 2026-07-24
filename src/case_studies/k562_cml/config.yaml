@@ -1,0 +1,199 @@
+# ============================================================================
+# CONFIGURATION — K562 / CML (BCR-ABL) Drug Response
+# ============================================================================
+# Case Study 3: Proves PTM-BDL generalizes to hematological cancer with
+# mixed drug mechanisms (TKI + chemotherapy).
+#
+# CANCER: Chronic myeloid leukemia (K562, BCR-ABL Ph+ fusion)
+# DRUGS: BCR-ABL TKIs + nucleoside analog + taxane + antifolate
+# PTM: Phosphorylation (S/T/Y) — same type, different kinase system
+#
+# DATA STRATEGY:
+#   Step05 scans ALL 7 DrugPTM-Bench cell line files for target gene
+#   baseline PTM levels (ABL1, CRKL, STAT5A at dose=0). Step06 merges
+#   these with GDSC IC50 across ~900 cell lines, creating a multi-cell-line
+#   dataset for true LOCLO evaluation grouped by BCR-ABL status / leukemia
+#   subtype. This follows the same approach as the EGFR case study.
+# ============================================================================
+
+case_study: k562_cml
+
+project:
+  cancer_types:
+    - "Chronic myeloid leukemia (CML)"
+    - "Pan-cancer (GDSC multi-cell-line)"
+  # Empty string = no tissue filter = keep ALL cell lines.
+  # Dasatinib/Imatinib are tested pan-cancer in GDSC — we want full coverage.
+  tissue_filters:
+    ABL1: ""
+    CRKL: ""
+    STAT5A: ""
+  target_proteins:
+    - "ABL1"
+    - "CRKL"
+    - "STAT5A"
+  target_drugs:
+    - Dasatinib
+    - Imatinib
+    - Cytarabine
+    - Paclitaxel
+    - Methotrexat    # Spelled without 'e' in DrugPTM-Bench
+  # Genes to scan across ALL DrugPTM-Bench cell lines for baseline PTM
+  target_genes_for_baseline:
+    - "ABL1"
+    - "BCR"
+    - "CRKL"
+    - "STAT5A"
+    - "STAT5B"
+    - "SRC"
+    - "LYN"
+
+paths:
+  raw_data:       "data/raw"
+  processed_data: "data/processed"
+  features:       "data/features"
+  models:         "data/models"
+  results:        "results"
+  figures:        "results/figures"
+
+gdsc:
+  drug_ids:
+    Dasatinib:    1066
+    Imatinib:     1003
+    Cytarabine:   1006
+    Paclitaxel:   1080
+    Methotrexate: 1007
+  # Maps each drug to target gene for step01 tissue filtering.
+  # All map to ABL1 with empty tissue filter → keeps ALL cell lines.
+  drug_protein_mapping:
+    Dasatinib:    ["ABL1"]
+    Imatinib:     ["ABL1"]
+    Cytarabine:   ["ABL1"]
+    Paclitaxel:   ["ABL1"]
+    Methotrexate: ["ABL1"]
+
+drugptm_bench:
+  cell_line_file: "PTM_CellLine_K562.csv"
+  cell_line: "K562"
+  ptm_types_available:
+    - phosphorylation
+  # All 7 cell line files in DrugPTM-Bench (for cross-cell-line baseline scan)
+  all_cell_line_files:
+    - "PTM_CellLine_A431.csv"
+    - "PTM_CellLine_A549.csv"
+    - "PTM_CellLine_BT-474.csv"
+    - "PTM_CellLine_HeLa.csv"
+    - "PTM_CellLine_K562.csv"
+    - "PTM_CellLine_MDA-MB-175.csv"
+    - "PTM_CellLine_RPMI8226.csv"
+
+# ── LOCLO Grouping ─────────────────────────────────────────────────────────
+# Group GDSC cell lines by BCR-ABL status / leukemia subtype for LOCLO.
+loclo:
+  grouping_strategy: "leukemia_subtype"
+  tissue_groups:
+    cml: "LCML"
+    aml: "LAML"
+    all: "ALL"
+    lymphoma: "DLBC"
+    lung: "LUAD|LUSC"
+    breast: "BRCA"
+    colorectal: "COAD|READ|COREAD"
+    skin: "SKCM"
+    brain: "GBM|LGG"
+    ovarian: "OV"
+    other: ""
+
+drugs:
+  dasatinib:
+    name: "Dasatinib"
+    smiles: "Cc1nc(Nc2ncc(C(=O)Nc3c(C)cccc3Cl)s2)cc(N2CCN(CCO)CC2)n1"
+    mechanism: "BCR-ABL/SRC multi-kinase TKI"
+  imatinib:
+    name: "Imatinib"
+    smiles: "Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1"
+    mechanism: "BCR-ABL TKI (Gleevec)"
+  cytarabine:
+    name: "Cytarabine"
+    smiles: "Nc1ccn([C@@H]2O[C@H](CO)[C@@H](O)[C@@H]2O)c(=O)n1"
+    mechanism: "Nucleoside analog (Ara-C)"
+  paclitaxel:
+    name: "Paclitaxel"
+    smiles: "CC(=O)O[C@H]1C(=O)[C@@]2(C)[C@H]([C@H](OC(=O)c3ccccc3)[C@]3(O)C[C@H](OC(=O)[C@H](O)[C@@H](NC(=O)c4ccccc4)c4ccccc4)C(C)=C1C3(C)C)[C@]1(OC(C)=O)CO[C@@H]1C[C@@H]2O"
+    mechanism: "Microtubule stabilizer (taxane)"
+  methotrexat:
+    name: "Methotrexate"
+    smiles: "CN(Cc1cnc2nc(N)nc(N)c2n1)c1ccc(C(=O)N[C@@H](CCC(=O)O)C(=O)O)cc1"
+    mechanism: "Antifolate (DHFR inhibitor)"
+
+# ── Per-Protein PTM Site Schemas ───────────────────────────────────────────
+# Following EGFR framework: each target protein has defined PTM sites.
+# The PTM-BDL self-attention layer processes these as per-site tokens.
+ptm:
+  ptm_dim: 12
+  # ── ABL1 (UniProt P00519, 1149 aa) — BCR-ABL fusion kinase target ───
+  # Imatinib/Dasatinib inhibit ABL1 kinase activity.
+  # Key: Y245 activation loop autophosphorylation required for full
+  # kinase activity (Hantschel, Genes Dev 2012, PMID 22855830).
+  # Y412 is the primary activation loop phosphosite.
+  ABL1:
+    phospho_sites:
+      - { position: 89,  residue: "Y89",  amino_acid: "Y", function: "SH3 domain — regulatory" }
+      - { position: 134, residue: "Y134", amino_acid: "Y", function: "SH2 domain — substrate recognition" }
+      - { position: 185, residue: "Y185", amino_acid: "Y", function: "SH2-kinase linker" }
+      - { position: 226, residue: "Y226", amino_acid: "Y", function: "kinase N-lobe" }
+      - { position: 245, residue: "Y245", amino_acid: "Y", function: "activation loop — autophosphorylation (Hantschel 2012)" }
+      - { position: 253, residue: "Y253", amino_acid: "Y", function: "P-loop — drug binding (Imatinib contact)" }
+      - { position: 264, residue: "Y264", amino_acid: "Y", function: "kinase domain regulatory" }
+      - { position: 393, residue: "Y393", amino_acid: "Y", function: "activation loop — catalytic activity" }
+      - { position: 412, residue: "Y412", amino_acid: "Y", function: "activation loop — full kinase activation" }
+      - { position: 69,  residue: "S69",  amino_acid: "S", function: "N-terminal cap regulatory" }
+      - { position: 735, residue: "T735", amino_acid: "T", function: "14-3-3 binding — cytoplasmic retention" }
+      - { position: 861, residue: "S861", amino_acid: "S", function: "C-terminal regulatory" }
+  # ── CRKL (UniProt P46109, 303 aa) — BCR-ABL downstream substrate ────
+  # Y207 is THE canonical BCR-ABL biomarker used clinically to monitor
+  # TKI response (ten Hoeve et al., Blood 1994, PMID 7517861).
+  CRKL:
+    phospho_sites:
+      - { position: 132, residue: "Y132", amino_acid: "Y", function: "SH2 domain phosphosite" }
+      - { position: 198, residue: "Y198", amino_acid: "Y", function: "SH3N domain phosphosite" }
+      - { position: 207, residue: "Y207", amino_acid: "Y", function: "BCR-ABL biomarker — clinical TKI monitoring (ten Hoeve 1994)" }
+      - { position: 251, residue: "Y251", amino_acid: "Y", function: "SH3C domain phosphosite" }
+  # ── STAT5A (UniProt P42229, 794 aa) — JAK-STAT signaling node ───────
+  # Y694 phosphorylation by JAK2/BCR-ABL activates STAT5 transcription.
+  # Dephosphorylated under TKI treatment.
+  # Ref: Nieborowska-Skorska et al., JEM 1999, PMID 10364531
+  STAT5A:
+    phospho_sites:
+      - { position: 694, residue: "Y694", amino_acid: "Y", function: "JAK2/BCR-ABL activation site (Nieborowska-Skorska 1999)" }
+      - { position: 699, residue: "Y699", amino_acid: "Y", function: "secondary activation site" }
+      - { position: 725, residue: "S725", amino_acid: "S", function: "transcriptional activity modulator" }
+      - { position: 779, residue: "S779", amino_acid: "S", function: "C-terminal regulatory" }
+
+uniprot:
+  ABL1:
+    accession: "P00519"
+    length: 1149
+    kinase_domain_start: 242
+    kinase_domain_end: 493
+  CRKL:
+    accession: "P46109"
+    length: 303
+  STAT5A:
+    accession: "P42229"
+    length: 794
+    sh2_domain_start: 593
+    sh2_domain_end: 670
+
+training:
+  seed: 42
+  device: "auto"   # MPS safe: K562 uses 200-token pooled embeddings (not 1022 like EGFR)
+  train_ratio: 0.7
+  val_ratio: 0.15
+
+model:
+  learning_rate: 0.001
+  weight_decay: 0.01
+  batch_size: 32
+  num_epochs: 100
+  early_stopping_patience: 15

@@ -1,5 +1,0 @@
-Method,Type,Train Time (s),Feature Dim,N_train
-Random Forest,ML,2.5,2224,808
-XGBoost,Gradient Boosting,4.61,2224,808
-Ridge,Linear (L2),1.86,2224,808
-Elastic Net,Linear (L1+L2),8.96,2224,808

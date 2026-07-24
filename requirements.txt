@@ -1,9 +1,11 @@
 # ============================================================================
-# requirements.txt — PTM-Driven Multimodal Self-Attention
-# Generated from working venv (Python 3.11.9)
+# requirements.txt — PTM-BDL Framework
 # ============================================================================
-# Install: pip install -r requirements.txt
-# For torch-geometric (optional): see pyproject.toml [project.optional-dependencies]
+# Install:
+#   pip install -r requirements.txt
+#   pip install torch-geometric -f https://data.pyg.org/whl/torch-2.12.0+cpu.html
+#
+# Or use: pip install -e ".[dev]"  (recommended, uses pyproject.toml)
 # ============================================================================
 
 # ── Core Scientific Stack ──
@@ -13,13 +15,12 @@ scipy>=1.11
 scikit-learn>=1.3
 biopython>=1.84
 
-# ── Benchmarking / ML Baselines ──
-xgboost>=2.0
-
 # ── Deep Learning ──
 torch>=2.1
 transformers>=4.36
 tokenizers>=0.15
+
+# ── Protein Structure Encoder (Step 08: ESM-IF1 pretrained backend) ──
 fair-esm>=2.0.0
 biotite>=1.0
 
@@ -32,12 +33,13 @@ tqdm>=4.66
 pyyaml>=6.0
 certifi
 
-# ── Optional: Structural Embeddings ──
-# torch-geometric>=2.4    # Uncomment if needed; requires matching torch version
+# ── Benchmarking / ML Baselines ──
+xgboost>=2.0
+
+# ── Development ──
+pytest>=7.0
+pytest-cov>=4.0
+
+# ── Structural Embeddings (PyG GearNet backend for Step 08) ──
+# Requires matching torch version. Install separately:
 #   pip install torch-geometric -f https://data.pyg.org/whl/torch-2.12.0+cpu.html
-
-# ── Optional: Development ──
-# pytest>=7.0
-# pytest-cov>=4.0
-
-pytest

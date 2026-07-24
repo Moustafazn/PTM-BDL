@@ -3,10 +3,10 @@ name = "ptm-bdl-framework"
 version = "0.1.0"
 description = "Multimodal Self-Attention with PTM Biological Dynamics Layer for Drug Response Prediction"
 readme = "README.md"
-license = {text = "MIT"}
+license = { text = "MIT" }
 authors = [
-    {name = "Moustafa Zein"},
-    {name = "Aboul Ella Hassanien"},
+    { name = "Moustafa Zein" },
+    { name = "Aboul Ella Hassanien" },
 ]
 requires-python = ">=3.11,<3.13"
 dependencies = [
@@ -16,27 +16,25 @@ dependencies = [
     "scipy>=1.11",
     "scikit-learn>=1.3",
     "biopython>=1.84",
-
     # ── Deep Learning ──
     "torch>=2.1",
-    "transformers>=4.36",       # ESM-2 and ChemBERTa model loading
+    "transformers>=4.36", # ESM-2 and ChemBERTa model loading
     "tokenizers>=0.15",
-
     # ── Protein Structure (ESM-IF1 backend for step08) ──
-    "fair-esm>=2.0.0",         # ESM-2 (step07) + ESM-IF1 structural encoder (step08)
-    "biotite>=1.0",            # PDB parsing for ESM-IF1
+    "fair-esm>=2.0.0", # ESM-2 (step07) + ESM-IF1 structural encoder (step08)
+    "biotite>=1.0", # PDB parsing for ESM-IF1
 
     # ── Data & Visualization ──
     "matplotlib>=3.8",
     "seaborn>=0.13",
-    "openpyxl>=3.1",            # Excel file reading (GDSC data)
-    "requests>=2.31",           # HTTP downloads
-    "tqdm>=4.66",               # Progress bars
-    "pyyaml>=6.0",              # Config loading
-    "certifi",                  # SSL certificates (macOS fix for model downloads)
+    "openpyxl>=3.1", # Excel file reading (GDSC data)
+    "requests>=2.31", # HTTP downloads
+    "tqdm>=4.66", # Progress bars
+    "pyyaml>=6.0", # Config loading
+    "certifi", # SSL certificates (macOS fix for model downloads)
 
     # ── Benchmarking / ML Baselines ──
-    "xgboost>=2.0",             # Gradient boosting baseline (step14a)
+    "xgboost>=2.0", # Gradient boosting baseline (step14a)
 ]
 
 [project.optional-dependencies]
@@ -56,6 +54,16 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+"src.ptm_bdl" = ["default_config.yaml"]
+"src.case_studies.egfr_erbb2_tki" = ["config.yaml"]
+"src.case_studies.hela_hdac" = ["config.yaml"]
+"src.case_studies.k562_cml" = ["config.yaml"]
 
 [build-system]
 requires = ["setuptools>=68.0"]

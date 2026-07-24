@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 title: >-
   Multimodal Self-Attention with PTM Biological Dynamics Layer:
-  A PTM Foundational Framework for Drug Response Prediction
+  A PTM Framework for Drug Response Prediction
 message: >-
   If you use this software, please cite it using the
   metadata from this file.

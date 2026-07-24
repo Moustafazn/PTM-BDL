@@ -1,0 +1,209 @@
+# ============================================================================
+# CONFIGURATION — HeLa / HDAC Inhibitor Epigenetic Drug Response
+# ============================================================================
+# Case Study 2: Proves PTM-BDL handles acetylation (NEW PTM type) with
+# zero framework code changes.
+#
+# CANCER FOCUS: Cervical carcinoma (HeLa, HPV18+)
+# DRUG MECHANISM: HDAC inhibitors (epigenetic) — NOT kinase inhibitors
+# NEW PTM TYPE: Acetylation (K) — extends registry from 4 to 5 subtypes
+#
+# DATA STRATEGY:
+#   Step05 scans ALL 7 DrugPTM-Bench cell line files for target gene
+#   baseline PTM levels (dose=0). Step06 merges these with GDSC IC50
+#   across ~900 cell lines, creating a multi-cell-line dataset for true
+#   LOCLO (Leave-One-Cell-Line-Out) evaluation grouped by tissue type.
+#   This follows the same approach as the EGFR case study.
+# ============================================================================
+
+case_study: hela_hdac
+
+project:
+  cancer_types:
+    - "Cervical carcinoma (HeLa)"
+    - "Pan-cancer (GDSC multi-cell-line)"
+  # Empty string = no tissue filter = keep ALL cell lines.
+  # HDAC inhibitors are pan-cancer drugs — we want maximum cell line coverage.
+  tissue_filters:
+    HDAC1: ""
+    EP300: ""
+  target_proteins:
+    - "EP300"
+    - "HDAC1"
+    - "CREBBP"
+    - "HIST1H4A"
+  target_drugs:
+    - Vorinostat
+    - Romidepsin
+    - CUDC101
+    - A485
+    - A486
+    - Curcumin
+  # Genes to scan across ALL DrugPTM-Bench cell lines for baseline PTM
+  target_genes_for_baseline:
+    - "HDAC1"
+    - "HDAC2"
+    - "HDAC3"
+    - "HDAC6"
+    - "EP300"
+    - "CREBBP"
+    - "HIST1H4A"
+    - "H2AFZ"
+
+paths:
+  raw_data:       "data/raw"
+  processed_data: "data/processed"
+  features:       "data/features"
+  models:         "data/models"
+  results:        "results"
+  figures:        "results/figures"
+
+gdsc:
+  drug_ids:
+    Vorinostat: 1012     # Pan-HDAC inhibitor (SAHA) — GDSC2
+    Romidepsin: 1659     # HDAC class I/II — GDSC2
+    CUDC101:    1578     # Triple HDAC/EGFR/HER2 — GDSC2
+  # Maps each drug to its target gene(s) for step01 tissue filtering.
+  # All map to HDAC1 with empty tissue filter → keeps ALL cell lines.
+  drug_protein_mapping:
+    Vorinostat: ["HDAC1"]
+    Romidepsin: ["HDAC1"]
+    CUDC101:    ["HDAC1"]
+
+drugptm_bench:
+  cell_line_file: "PTM_CellLine_HeLa.csv"
+  cell_line: "HeLa"
+  ptm_types_available:
+    - phosphorylation
+    - acetylation
+  # All 7 cell line files in DrugPTM-Bench (for cross-cell-line baseline scan)
+  all_cell_line_files:
+    - "PTM_CellLine_A431.csv"
+    - "PTM_CellLine_A549.csv"
+    - "PTM_CellLine_BT-474.csv"
+    - "PTM_CellLine_HeLa.csv"
+    - "PTM_CellLine_K562.csv"
+    - "PTM_CellLine_MDA-MB-175.csv"
+    - "PTM_CellLine_RPMI8226.csv"
+
+# ── LOCLO Grouping ─────────────────────────────────────────────────────────
+# Group GDSC cell lines by cancer type / tissue of origin for LOCLO.
+loclo:
+  grouping_strategy: "tissue_type"
+  tissue_groups:
+    cervical: "CESC"
+    breast: "BRCA"
+    lung_nsclc: "LUAD|LUSC"
+    lung_sclc: "SCLC"
+    leukemia: "LAML|LCML|ALL"
+    lymphoma: "DLBC"
+    colorectal: "COAD|READ|COREAD"
+    ovarian: "OV"
+    pancreatic: "PAAD"
+    skin: "SKCM"
+    brain: "GBM|LGG"
+    other: ""
+
+# ── Hartl et al. 2024 ─────────────────────────────────────────────────────
+hartl_2024:
+  title: "Decrypting lysine deacetylase inhibitor action and protein modifications by dose-resolved proteomics"
+  journal: "Cell Reports 2024"
+  url: "https://www.cell.com/cell-reports/fulltext/S2211-1247(24)00600-4"
+  data_dir: "hartl_2024"
+
+drugs:
+  vorinostat:
+    name: "Vorinostat"
+    smiles: "O=C(CCCCCCC(=O)Nc1ccccc1)NO"
+    mechanism: "Pan-HDAC inhibitor (SAHA)"
+  romidepsin:
+    name: "Romidepsin"
+    smiles: "C/C=C1\\NC(=O)[C@H]2CSSCC/C=C/[C@H](CC(=O)N[C@H](C(C)C)C(=O)N2)OC(=O)[C@H](C(C)C)NC1=O"
+    mechanism: "HDAC class I selective (depsipeptide)"
+  cudc101:
+    name: "CUDC-101"
+    smiles: "C#Cc1cccc(Nc2ncnc3cc(OC)c(OCCCCCCC(=O)NO)cc23)c1"
+    mechanism: "Triple HDAC/EGFR/HER2 inhibitor"
+  a485:
+    name: "A485"
+    smiles: "COc1cc(F)c(F)c(Nc2ccc(I)cc2F)c1NS(=O)(=O)C1(C[C@H](O)CO)CC1"
+    mechanism: "p300/CBP catalytic HAT inhibitor"
+  a486:
+    name: "A486"
+    smiles: "O=C(NOCC(O)GO)c1ccc(F)c(F)c1Nc1ccc(I)cc1F"
+    mechanism: "Inactive control for A485"
+  curcumin:
+    name: "Curcumin"
+    smiles: "COc1cc(/C=C/C(=O)/C=C(O)/C=C/c2ccc(O)c(OC)c2)ccc1O"
+    mechanism: "Natural polyphenol HDAC/HAT modulator"
+
+# ── Per-Protein PTM Site Schemas ───────────────────────────────────────────
+# Following EGFR framework: each target protein has defined PTM sites
+# with UniProt positions. The PTM-BDL self-attention layer processes
+# these as per-site tokens.
+ptm:
+  ptm_dim: 8          # primary channel: max phospho sites (HDAC1=8, EP300=5)
+  secondary_dim: 7    # secondary channel: max acetyl sites (HDAC1=4, EP300=7)
+  # ── HDAC1 (UniProt Q13547, 482 aa) — primary drug target ────────────
+  # Vorinostat/Romidepsin inhibit HDAC1 enzymatic activity.
+  # Key: S393/S421/S423 phosphorylation by CK2 regulates HDAC1 activity
+  # and complex formation (Pflum et al., JBC 2001, PMID 11929873).
+  HDAC1:
+    phospho_sites:
+      - { position: 29,  residue: "S29",  amino_acid: "S", function: "N-terminal regulatory" }
+      - { position: 72,  residue: "Y72",  amino_acid: "Y", function: "catalytic domain regulatory" }
+      - { position: 393, residue: "S393", amino_acid: "S", function: "CK2 substrate — activates HDAC1 (Pflum 2001)" }
+      - { position: 406, residue: "S406", amino_acid: "S", function: "C-terminal regulatory" }
+      - { position: 421, residue: "S421", amino_acid: "S", function: "CK2 substrate — complex formation (Pflum 2001)" }
+      - { position: 423, residue: "S423", amino_acid: "S", function: "CK2 substrate — enzymatic activity (Pflum 2001)" }
+      - { position: 445, residue: "T445", amino_acid: "T", function: "C-terminal regulatory" }
+      - { position: 468, residue: "S468", amino_acid: "S", function: "C-terminal regulatory" }
+    acetyl_sites:
+      - { position: 218, residue: "K218", amino_acid: "K", function: "autoacetylation — catalytic domain" }
+      - { position: 220, residue: "K220", amino_acid: "K", function: "autoacetylation — catalytic domain" }
+      - { position: 432, residue: "K432", amino_acid: "K", function: "C-terminal acetylation" }
+      - { position: 438, residue: "K438", amino_acid: "K", function: "C-terminal acetylation" }
+  # ── EP300/p300 (UniProt Q09472, 2414 aa) — A485 target ──────────────
+  # p300 HAT enzyme. A485 inhibits its catalytic activity.
+  # Key: K1499 autoacetylation activates HAT (Thompson et al., NSMB 2004).
+  # S1834 AKT phosphorylation activates HAT (Liu et al., Mol Cell 2006).
+  EP300:
+    phospho_sites:
+      - { position: 89,   residue: "S89",   amino_acid: "S", function: "N-terminal regulatory" }
+      - { position: 1834, residue: "S1834", amino_acid: "S", function: "AKT substrate — activates HAT (Liu 2006)" }
+      - { position: 1177, residue: "Y1177", amino_acid: "Y", function: "autophosphorylation" }
+      - { position: 2271, residue: "S2271", amino_acid: "S", function: "C-terminal regulatory" }
+      - { position: 2279, residue: "S2279", amino_acid: "S", function: "C-terminal regulatory" }
+    acetyl_sites:
+      - { position: 1499, residue: "K1499", amino_acid: "K", function: "autoacetylation — activates HAT (Thompson 2004)" }
+      - { position: 1549, residue: "K1549", amino_acid: "K", function: "HAT domain autoacetylation" }
+      - { position: 1558, residue: "K1558", amino_acid: "K", function: "HAT domain autoacetylation" }
+      - { position: 1560, residue: "K1560", amino_acid: "K", function: "HAT domain autoacetylation" }
+      - { position: 1568, residue: "K1568", amino_acid: "K", function: "HAT domain autoacetylation" }
+      - { position: 1574, residue: "K1574", amino_acid: "K", function: "HAT domain autoacetylation" }
+      - { position: 1583, residue: "K1583", amino_acid: "K", function: "HAT domain autoacetylation" }
+
+uniprot:
+  HDAC1:
+    accession: "Q13547"
+    length: 482
+    catalytic_domain_start: 9
+    catalytic_domain_end: 321
+  EP300:
+    accession: "Q09472"
+    length: 2414
+    hat_domain_start: 1284
+    hat_domain_end: 1664
+
+training:
+  seed: 42
+  device: "auto"   # MPS safe: HeLa uses 200-token pooled embeddings (not 1022 like EGFR)
+  train_ratio: 0.7
+  val_ratio: 0.15
+
+model:
+  learning_rate: 0.001
+  weight_decay: 0.01
+  batch_size: 32
+  num_epochs: 100
+  early_stopping_patience: 15

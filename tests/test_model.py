@@ -8,7 +8,7 @@ attention/PTM-BDL output returns, gradient flow, and PTM sensitivity.
 import torch
 
 # noinspection PyProtectedMember
-from src.models.multimodal_predictor import (
+from src.ptm_bdl.model import (
     PTMBDLEncoder, PTMBDLMlpAblation, ModalityProjection, BilinearLateFusion,
 )
 
@@ -28,8 +28,8 @@ class TestArchitecture:
     @staticmethod
     def test_has_all_components(model):
         for attr in ["seq_projection", "struct_projection", "drug_projection",
-                      "static_transformer", "static_pool", "ptm_bdl",
-                      "fusion", "regression_head", "classification_head"]:
+                     "static_transformer", "static_pool", "ptm_bdl",
+                     "fusion", "regression_head", "classification_head"]:
             assert hasattr(model, attr), f"Missing: {attr}"
 
     @staticmethod
@@ -57,8 +57,8 @@ class TestForwardPass:
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                glyco_vector=batch["glyco_vector"],
-                delta_glyco_vector=batch["delta_glyco_vector"],
+                secondary_vector=batch["secondary_vector"],
+                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
             )
 
@@ -114,8 +114,8 @@ class TestForwardPass:
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                glyco_vector=batch["glyco_vector"],
-                delta_glyco_vector=batch["delta_glyco_vector"],
+                secondary_vector=batch["secondary_vector"],
+                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
                 return_attention=True,
             )
@@ -132,8 +132,8 @@ class TestForwardPass:
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                glyco_vector=batch["glyco_vector"],
-                delta_glyco_vector=batch["delta_glyco_vector"],
+                secondary_vector=batch["secondary_vector"],
+                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
                 return_ptm_bdl=True,
             )
@@ -152,25 +152,25 @@ class TestGradientFlow:
             seq_embeddings=batch["seq_emb"], struct_embeddings=batch["struct_emb"],
             drug_pooled=batch["drug_pooled"], drug_embeddings=batch["drug_emb"],
             ptm_vector=ptm, delta_ptm_vector=batch["delta_ptm_vector"],
-            glyco_vector=batch["glyco_vector"],
-            delta_glyco_vector=batch["delta_glyco_vector"],
+            secondary_vector=batch["secondary_vector"],
+            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
         resist.sum().backward()
         assert ptm.grad is not None and ptm.grad.abs().sum() > 0
 
     @staticmethod
-    def test_glyco_grads(model, batch):
-        glyco = batch["glyco_vector"].clone().requires_grad_(True)
+    def test_secondary_grads(model, batch):
+        secondary = batch["secondary_vector"].clone().requires_grad_(True)
         ic50, _ = model(
             seq_embeddings=batch["seq_emb"], struct_embeddings=batch["struct_emb"],
             drug_pooled=batch["drug_pooled"], drug_embeddings=batch["drug_emb"],
             ptm_vector=batch["ptm_vector"], delta_ptm_vector=batch["delta_ptm_vector"],
-            glyco_vector=glyco, delta_glyco_vector=batch["delta_glyco_vector"],
+            secondary_vector=secondary, delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
         ic50.sum().backward()
-        assert glyco.grad is not None and glyco.grad.abs().sum() > 0
+        assert secondary.grad is not None and secondary.grad.abs().sum() > 0
 
     @staticmethod
     def test_seq_grads(model, batch):

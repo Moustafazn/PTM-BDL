@@ -14,7 +14,7 @@ import torch
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.models.multimodal_predictor import MultimodalResistancePredictor
+from src.ptm_bdl.model.predictor import MultimodalResistancePredictor
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def model_mlp():
 
 @pytest.fixture
 def batch():
-    """Minimal 4-sample batch with mixed EGFR/ERBB2."""
+    """Minimal 4-sample batch with mixed proteins."""
     B = 4
     torch.manual_seed(42)
     return {
@@ -53,8 +53,8 @@ def batch():
         "drug_pooled": torch.randn(B, 384),
         "ptm_vector": torch.ones(B, 12),
         "delta_ptm_vector": torch.randn(B, 12) * 0.1,
-        "glyco_vector": torch.ones(B, 12),
-        "delta_glyco_vector": torch.randn(B, 12) * 0.1,
+        "secondary_vector": torch.ones(B, 12),
+        "delta_secondary_vector": torch.randn(B, 12) * 0.1,
         "target_protein": torch.tensor([0, 1, 0, 1]),
         "ln_ic50": torch.randn(B, 1),
         "resistance_label": torch.tensor([[1.0], [0.0], [1.0], [1.0]]),

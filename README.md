@@ -1,6 +1,10 @@
-# Multimodal Self-Attention with PTM Biological Dynamics Layer: A PTM Foundational Framework for Drug Response Prediction
+# PTM-BDL Framework
 
-**A foundational multimodal deep learning framework that combines cross-modal self-attention over protein sequence, 3D structure, and drug chemistry with a PTM Biological Dynamics Layer (PTM-BDL) — a typed self-attention module that encodes the dynamic post-translational modification signaling state of the cell. The framework accepts one or more PTM types (e.g., phosphorylation, glycosylation), each with 1-to-N subtypes, learning how their combinatorial patterns drive drug resistance. Demonstrated on EGFR (NSCLC) and ERBB2/HER2 (breast cancer) TKI resistance across two proteins, two PTM types, four subtypes, and six drugs.**
+**A Post-Translational Modification Framework for Drug Response Prediction**
+
+A config-driven, extensible deep learning framework that treats post-translational modifications (PTMs) as first-class
+typed tokens in a self-attention architecture. The framework is protein-agnostic, PTM-type-agnostic, and drug-agnostic —
+adding a new protein, PTM type, or drug requires only configuration changes.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -8,559 +12,577 @@
 
 ---
 
-## 1. Overview
+## Architecture
 
-### The Problem
-
-Drug resistance is the primary cause of treatment failure in targeted cancer therapy. Predicting resistance requires integrating multiple layers of biological information — protein sequence (mutations), 3D structure (binding pocket changes), drug chemistry (molecular properties), and dynamic post-translational modification (PTM) states (signaling rewiring) — that no single modality can capture alone.
-
-Current drug response prediction (DRP) methods either ignore PTMs entirely, or treat them as flat features in an MLP. In reality, drug resistance is determined by the **combinatorial PTM signaling code** — the pattern of which sites are phosphorylated, glycosylated, or otherwise modified, how drugs change those patterns, and how different modification types interact. No existing model captures this multi-layered biological process.
-
-### Two Contributions
-
-This framework addresses both problems through a **two-stage architecture**:
-
-#### Contribution 1: Multimodal Cross-Modal Self-Attention
-
-Four biological modalities are projected into a shared latent space and processed through **joint self-attention**, enabling the model to discover cross-modal interaction patterns that single-modality or late-fusion models cannot learn:
-
-| Modality | Encoder | What it captures | What it misses alone |
-|----------|---------|------------------|---------------------|
-| Protein sequence | ESM-2 (650M params) | Mutations exist | Their 3D structural effect |
-| 3D structure | GearNet-Edge | Binding pocket shape | Dynamic PTM signaling |
-| Drug chemistry | ChemBERTa-77M | Molecular properties | Biological context |
-| **PTM state** | **PTM-BDL** | **Dynamic signaling** | Drug chemistry |
-
-Sequence residues attend to structural features, structural features attend to drug atoms, and vice versa — the model can discover patterns like "mutation at residue 790 changes the binding pocket shape for this drug's warhead."
-
-#### Contribution 2: PTM Biological Dynamics Layer (PTM-BDL)
-
-A typed self-attention module that encodes the dynamic PTM signaling state of the cell. PTM-BDL is designed as a **general-purpose PTM encoder** that handles:
-
-- **One or more PTM types** (e.g., phosphorylation, glycosylation, acetylation, ubiquitination)
-- **1-to-N subtypes per type**, each with its own learned embedding:
-
-```
-PTM Type: phosphorylation
-  └── Subtypes: phospho_Y (subtype 0), phospho_S (subtype 1), phospho_T (subtype 2)
-
-PTM Type: glycosylation
-  └── Subtypes: glyco_N (subtype 3)
-
-PTM Type: acetylation (future — zero architecture changes)
-  └── Subtypes: acetyl_K (subtype 4), acetyl_Nt (subtype 5)
-```
-
-Each PTM site becomes a **typed token** encoded as `[level, delta, ratio]`:
-- `level` — baseline modification occupancy
-- `delta` — drug-induced change in occupancy
-- `ratio = delta / (level + ε)` — fractional drug efficacy at that site
-
-The typed self-attention then:
-1. **Type-gates** each token — a learnable gate controlled by the subtype embedding determines which information passes (the model learns that phospho-Y has a different biological role than phospho-S or glyco-N)
-2. **Adds protein identity** — protein-indexed embeddings let the model distinguish which protein a site belongs to
-3. **Discovers inter-site dependencies** — self-attention over all PTM tokens finds which site combinations predict resistance (e.g., Y1068 queries Y1173: "Is the survival pathway also shut down?")
-4. **Discovers cross-type interactions** — phospho and glyco tokens attend to each other in the same attention space, learning crosstalk between intracellular signaling and receptor surface biology
-5. **Applies a residual gate** — α·attended + (1−α)·independent, so sites that don't benefit from context keep their independent signal
-
-The architecture handles proteins with **different numbers of real vs. padded sites** through attention masking — adding a new protein with different PTM coverage requires only adding its site definitions and padding configuration.
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    MULTIMODAL INPUT LAYER                        │
-│  ESM-2 (L×1280)  GearNet (M×512)  ChemBERTa (N×384)           │
-│       ↓                ↓                 ↓                      │
-│    Modality Projection → shared_dim (512) each                  │
-│       ↓                ↓                 ↓                      │
-│  + modality embeddings (learned: seq / struct / drug)           │
-└──────────────────────────┬──────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│              JOINT SELF-ATTENTION TRANSFORMER                   │
-│  [seq_tokens ; struct_tokens ; drug_tokens] concatenated        │
-│  → 4 layers × 8 heads cross-modal self-attention                │
-│  → Attention pooling (Ilse et al., ICML 2018)                  │
-│  → S_rep: static protein-drug representation (512-dim)         │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-┌──────────────────────────┴──────────────────────────────────────┐
-│                                                                  │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │           PTM BIOLOGICAL DYNAMICS LAYER (PTM-BDL)         │  │
-│  │                                                           │  │
-│  │  PTM sites → [level, delta, ratio] per token              │  │
-│  │  → Type-gated projection (per modification subtype)       │  │
-│  │  → + type_emb + protein_emb + slot_emb                    │  │
-│  │  → Typed self-attention (inter-site dependencies)         │  │
-│  │  → Residual gate: α·attended + (1−α)·independent          │  │
-│  │  → Mask-aware mean pool → P_rep (64-dim)                  │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  BILINEAR LATE FUSION: S_rep ⊙ P_rep                           │
-│  "Given the drug CAN bind (S_rep), does PTM say it WORKS?"    │
-│                                                                  │
-│  → IC50 regression head                                         │
-│  → Resistance classification head                               │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Why two-stage fusion?** Drug identity enters through S_rep (early joint attention), not through PTM-BDL. This prevents the model from learning drug→prediction shortcuts that bypass PTM modulation. The delta_ptm input already encodes drug-induced changes, so PTM-BDL IS drug-conditioned through its *input features*, not through a fusion shortcut.
+<p align="center">
+  <img src="docs/figures/architecture.png" alt="PTM-BDL Framework Architecture" width="100%">
+</p>
+<p align="center">
+  <em><strong>Figure 1.</strong> PTM-BDL multimodal architecture. <strong>Stage 1 (Static)</strong>: Protein sequence (ESM-2), 3D structure (GearNet), and drug chemistry (ChemBERTa) are projected into a shared space and processed by cross-modal self-attention to produce S<sub>rep</sub>. <strong>Stage 2 (Dynamic)</strong>: PTM sites are encoded as typed tokens [level, δ, ratio] with type-gated projection and inter-site self-attention to produce P<sub>rep</sub>. <strong>Fusion</strong>: Bilinear late fusion S<sub>rep</sub> ⊙ P<sub>rep</sub> feeds prediction heads for IC50 regression and resistance classification.</em>
+</p>
 
 ---
 
-## 2. Demonstration: EGFR & ERBB2 TKI Resistance
+## Overview
 
-The framework is demonstrated on a challenging real-world application: predicting tyrosine kinase inhibitor resistance across two receptor tyrosine kinases in two cancer types.
+Drug resistance is determined by the **combinatorial PTM signaling code** — the pattern of which sites are
+phosphorylated, glycosylated, or otherwise modified, how drugs change those patterns, and how different modification
+types interact. PTM-BDL is the first neural module that encodes this biology through typed self-attention over PTM
+tokens, enabling the model to discover inter-site signaling dependencies and cross-type crosstalk.
 
-### Dataset
+### Two Architectural Contributions
 
-| Property | Value |
-|----------|-------|
-| Total samples | 951 |
-| EGFR (NSCLC) | 646 samples |
-| ERBB2/HER2 (breast) | 305 samples |
-| Drugs | 6 TKIs (Osimertinib, Gefitinib, Afatinib, Erlotinib, Lapatinib, Sapitinib) |
-| PTM sites per protein | 12 phospho + 12 glyco = 24 typed tokens |
-| PTM subtypes | 4 (phospho-Y, phospho-S, phospho-T, glyco-N) |
-| Class distribution | ~92% resistant, ~8% sensitive |
-| PTM data sources | 8 independent phosphoproteomic + 5 glycoproteomic studies |
+1. **Multimodal Cross-Modal Self-Attention** — Protein sequence (ESM-2), 3D structure (GearNet), and drug chemistry (
+   ChemBERTa) are jointly learned through cross-modal self-attention, producing a static protein-drug representation (
+   S_rep).
 
-### Why Two Proteins Prove Generalizability
+2. **PTM Biological Dynamics Layer (PTM-BDL)** — A typed self-attention encoder that accepts any number of PTM types,
+   each with any number of subtypes. Each PTM site becomes a typed token encoded as `[level, delta, ratio]`, processed
+   through type-gated projection and inter-site self-attention to produce a dynamic PTM representation (P_rep).
 
-| Design dimension | EGFR | ERBB2/HER2 |
-|-----------------|------|------------|
-| Cancer type | Non-small cell lung cancer | Breast cancer |
-| Real PTM sites | 24 (12 phospho + 12 glyco) | 17 (10 phospho + 7 glyco) + 7 padded |
-| Drugs tested | Osimertinib, Gefitinib, Afatinib, Erlotinib | + Lapatinib, Sapitinib |
-| Dominant resistance pathway | RAS-MAPK (Y1068/GRB2) | PI3K-AKT (Y1248/SHC1) |
+**Fusion**: `S_rep ⊙ P_rep` — "Given the drug CAN bind (S_rep), does the PTM signaling code say it WORKS? (P_rep)"
 
-The architecture handles both proteins through the **same encoder** — different padding masks, different type assignments, different pathway biology — proving the framework is protein-agnostic.
+### Case Studies
 
-### Data Integration
+| Case Study | Status | Proteins | PTM Types | Drugs | Cancer | Data |
+|------------|--------|----------|-----------|-------|--------|------|
+| **EGFR/ERBB2 TKI Resistance** | ✅ Complete | EGFR, HER2 | phospho (Y/S/T) + glyco (N) | 6 TKIs | NSCLC + Breast | 3.8M rows |
+| **HeLa / HDAC Inhibitors** |  ✅ Complete | HDAC1, EP300 | phospho (S/T/Y) + **acetyl (K)** | 6 drugs | Cervical (pan-cancer) | 93K summaries |
+| **K562 / CML (BCR-ABL)** | ✅ Complete | ABL1, CRKL, STAT5A | phospho (S/T/Y) | 5 drugs (TKI + chemo) | CML (leukemia) | 78K summaries |
 
-| Source | What | Reference |
-|--------|------|-----------|
-| GDSC2 | IC50 drug response | Iorio et al., Cell 2016 |
-| DepMap/CCLE | Somatic mutations | Ghandi et al., Nature 2019 |
-| PDB | Crystal structures (EGFR + HER2) | wwPDB Consortium |
-| UniProt | PTM site annotations | UniProt Consortium 2025 |
-| DrugPTM-Bench | Drug→PTM phosphoproteomics | Badkul et al., 2026 |
-| Tozuka 2024, Hsu 2025, PNAS 2025, MCP 2025, Cancer Res 2021, FEBS 2025, Ruprecht 2017 | Site-level phospho + glyco quantitation | See [`config/config.yaml`](config/config.yaml) |
-
-### Key Findings
-
-- **Cross-receptor homology**: The model independently discovers that EGFR Y1068 ≡ HER2 Y1221 (both GRB2→RAS-MAPK docking sites) — learning biological **function**, not protein identity
-- **Tissue-specific pathway discovery**: EGFR resistance is MAPK-driven (Y1068 top site) while HER2 resistance is PI3K-AKT-driven (Y1248 top site) — the model learns tissue-specific pathway hierarchies without explicit supervision
-- **Reproducible attributions**: Integrated Gradients across 3 seeds produces identical site rankings (std_rank = 0.0 for top sites)
-- **Cross-type attention**: Non-trivial phospho↔glyco off-diagonal attention mass — the model USES crosstalk between intracellular signaling and receptor surface biology
+Each case study proves the framework generalizes to a different drug mechanism, cancer type, and PTM type — with **zero
+framework code changes**.
 
 ---
 
-## 3. Quick Start
-
-### Installation
-
-#### Option A: pip (local development)
-
-```bash
-git clone https://github.com/Moustafazn/PTM-BDL-Framework.git
-cd PTM-BDL-Framework
-
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-
-pip install -e ".[structural]"
-
-# For GPU acceleration (optional)
-pip install -e ".[gpu]"
-```
-
-#### Option B: Docker Compose (reproducible — recommended for reviewers)
-
-```bash
-git clone https://github.com/Moustafazn/PTM-BDL-Framework.git
-cd PTM-BDL-Framework
-
-docker compose up                         # Full pipeline
-docker compose --profile train up         # Training + ablation + CV
-docker compose --profile benchmark up     # Benchmarking suite
-docker compose --profile figures up       # Publication figures & tables
-docker compose --profile test up          # Test suite
-docker compose run --rm shell             # Interactive shell
-docker compose --profile gpu up           # GPU support (NVIDIA)
-```
-
-### Data Download
-
-All raw data files are available as a single archive:
-
-> **📦 [Download all raw data](https://github.com/Moustafazn/PTM-BDL-Framework/releases)**
->
-> ```bash
-> tar -xzf data_raw.tar.gz
-> ```
-> This creates the full `data/raw/` directory with all required files.
-
-For manual download instructions, see the [Data Download Guide](docs/DATA_DOWNLOAD_GUIDE.md).
-
-### Running the Full Pipeline
-
-```bash
-make data         # Phase 1: Data Acquisition (Steps 01–05)
-make harmonize    # Phase 2: Data Harmonization (Step 06)
-make features     # Phase 3: Feature Extraction (Steps 07–09)
-make train        # Phase 4: Training & Evaluation (Steps 10–13)
-make benchmark    # Phase 5: Benchmarking (Steps 14a–d)
-make figures      # Phase 6: Publication Figures & Tables (Steps 15a–b)
-
-# Or run everything end-to-end:
-make all
-```
-
-<details>
-<summary><b>Individual Steps (click to expand)</b></summary>
-
-```bash
-# ── Data Acquisition ──
-python scripts/step01_download_gdsc.py       # GDSC IC50 drug response data
-python scripts/step02_download_mutations.py   # EGFR + ERBB2 mutation profiles
-python scripts/step03_download_structures.py  # PDB crystal structures
-python scripts/step04_download_ptm_data.py    # PTM site annotations (UniProt)
-python scripts/step05_download_drugptm.py     # Drug-induced PTM changes (8 studies)
-
-# ── Harmonization ──
-python scripts/step06_harmonize_dataset.py    # → multimodal_dataset.csv (951 samples)
-
-# ── Feature Extraction ──
-python scripts/step07_extract_esm2.py         # ESM-2 protein language model
-python scripts/step08_extract_gearnet.py      # GearNet structural encoder
-python scripts/step09_extract_chemberta.py    # ChemBERTa drug encoder
-
-# ── Training & Analysis ──
-python scripts/step10_build_model.py          # Verify model architecture
-python scripts/step11_train.py                # Train multimodal model
-python scripts/step11b_ablation.py            # Ablation + stability + randomized control
-python scripts/step11c_crossval.py            # 5-fold cross-validation
-python scripts/step12_evaluate.py             # Comprehensive evaluation
-python scripts/step13_explainability.py       # XAI: IG + attention analysis
-
-# ── Benchmarking ──
-python scripts/step14a_ml_baselines.py        # ML baselines (RF, XGBoost, Ridge, Elastic Net)
-python scripts/step14b_external_baselines.py  # External DRP methods (DIPK, HiDRA, etc.)
-python scripts/step14c_statistical_tests.py   # Bootstrap CIs, DeLong, Wilcoxon, BH correction
-python scripts/step14d_loclo.py               # Cell-blind LOCLO generalization
-
-# ── Publication Outputs ──
-python scripts/step15a_paper_figures.py       # Camera-ready figures (PDF, 300 DPI)
-python scripts/step15b_paper_tables.py        # LaTeX + CSV tables
-```
-</details>
-
----
-
-## 4. Model Components
-
-### 4.1 Multimodal Input Encoders
-
-| Modality | Pretrained Model | Output |
-|----------|-----------------|--------|
-| Protein sequence | [ESM-2](https://github.com/facebookresearch/esm) (650M params) | Per-residue embeddings (L × 1280) |
-| 3D structure | [GearNet-Edge](https://github.com/DeepGraphLearning/GearNet) | Per-residue structural features (M × 512) |
-| Drug chemistry | [ChemBERTa-77M-MTR](https://huggingface.co/DeepChem/ChemBERTa-77M-MTR) | Per-token + pooled drug features (N × 384) |
-
-### 4.2 Joint Cross-Modal Self-Attention
-
-All modality tokens are projected to a shared 512-dimensional space and concatenated. A 4-layer, 8-head Transformer encoder performs **cross-modal self-attention** — sequence residues attend to structural features, structural features attend to drug atoms, and vice versa. Attention pooling (Ilse et al., ICML 2018) produces the static representation **S_rep**.
-
-### 4.3 PTM Biological Dynamics Layer (PTM-BDL)
-
-The core architectural contribution — a typed self-attention module that encodes the dynamic PTM signaling state:
-
-1. **Value projection (§7.4)**: Each PTM site → `[level, delta, ratio]` → linear projection → d_model
-2. **Type-gated projection (§7.5)**: `gate = σ(W·[projected; type_emb])`, then `token = gate ⊙ projected` — the modification subtype controls which information passes through
-3. **Embeddings**: `token += type_emb + protein_emb + slot_emb` — each token knows its PTM subtype, which protein it belongs to, and its positional slot
-4. **Typed self-attention (§7.6)**: Standard Transformer encoder with padding-aware masking — PTM sites attend to each other, discovering inter-site signaling dependencies
-5. **Residual gate (§7.7)**: `α = σ(W·[attended; pre_attn])`, then `out = α·attended + (1−α)·pre_attn` — sites that don't benefit from inter-site context keep their independent representation
-6. **Mask-aware mean pool**: Only real (non-padded) tokens contribute to the final **P_rep**
-
-### 4.4 Bilinear Late Fusion
-
-S_rep (static: "what is the protein-drug system?") and P_rep (dynamic: "what does the PTM state say?") are fused via element-wise bilinear interaction: `tanh(W_s · S_rep) ⊙ tanh(W_p · P_rep)`.
-
-### 4.5 Prediction Heads
-
-- **Regression**: Predicts ln(IC50) drug sensitivity
-- **Classification**: Predicts P(resistance) via focal loss with class-conditional α
-
-### Training Strategy
-
-- **Multi-task loss**: λ₁·Huber(IC50) + λ₂·FocalLoss(resistance), λ₂=2.0 to boost classification signal
-- **Class imbalance**: WeightedRandomSampler + focal loss (α=0.25, γ=2.0) → 3× up-weight on minority
-- **Early stopping**: On max(AUROC, BAcc) — threshold-independent for 92:8 imbalanced data
-- **Regularization**: Gradient clipping (1.0), cosine annealing LR, dropout (0.1)
-
-> For the detailed mathematical formulation, see [`docs/ARCHITECTURE.md`](docs/PTM_Biological_Dynamics_Layer.md).
-
----
-
-## 5. Configuration
-
-All parameters are centralized in [`config/config.yaml`](config/config.yaml):
-
-### Model Architecture
-
-```yaml
-model:
-  shared_dim: 512                  # Shared embedding dimension across modalities
-  num_joint_attention_layers: 4    # Cross-modal self-attention depth
-  num_attention_heads: 8           # Attention heads per layer
-  dropout: 0.1
-  learning_rate: 1.0e-4
-  batch_size: 16
-  num_epochs: 100
-  early_stopping_patience: 15
-
-ptm_bdl:
-  d_model: 64       # PTM token embedding dimension
-  n_heads: 4        # Self-attention heads in PTM-BDL
-  n_layers: 2       # Transformer layers in PTM-BDL
-
-training:
-  device: "cpu"      # "cpu", "cuda", "mps", "auto"
-  seed: 42
-  train_ratio: 0.7
-  val_ratio: 0.15
-```
-
-### PTM Site Definitions
-
-The config defines per-protein PTM sites with amino acid types that determine subtype embeddings:
-
-```yaml
-ptm:
-  ptm_dim: 12       # Phospho sites per protein
-  glyco_dim: 12     # Glyco sites per protein
-
-  EGFR:
-    phospho_sites:
-      - {position: 869,  residue: "Y869",  amino_acid: "Y", function: "SRC substrate"}
-      - {position: 991,  residue: "S991",  amino_acid: "S", function: "regulatory"}
-      # ... 12 sites total
-    glyco_sites:
-      - {position: 56,   residue: "N56",   amino_acid: "N", function: "domain I"}
-      # ... 12 sites total
-
-  ERBB2:
-    phospho_sites:    # 10 real + 2 zero-padded to match ptm_dim=12
-      - {position: 686,  residue: "T686",  amino_acid: "T", function: "regulatory"}
-      # ... 10 real sites
-    glyco_sites:      # 7 real + 5 zero-padded to match glyco_dim=12
-      # ...
-```
-
-### Drug Definitions
-
-```yaml
-drugs:
-  osimertinib:
-    name: "Osimertinib"
-    smiles: "C=CC(=O)Nc1cc(OC)c(Nc2nccc(-c3cn(C)c4ccccc34)n2)cc1N(C)CCN(C)C"
-    generation: "3rd"
-    binding_type: "covalent (C797)"
-  # ... 6 drugs total
-```
-
-> The full config includes phospho propagation rules, HER2 amplification tiers, per-cell-line PTM modulators, and drug-protein mappings. See [`config/config.yaml`](config/config.yaml).
-
----
-
-## 6. Extensibility
-
-The PTM-BDL architecture supports extension to new proteins, PTM types, and drugs. The typed token system, protein embeddings, and padding masks are designed to be configurable.
-
-### Adding a New Protein
-
-To add a third protein (e.g., BRAF), you would:
-
-1. Add site definitions in `config/config.yaml` under `ptm.BRAF`
-2. Add protein ID constant and buffer arrays in the model
-3. Add a PDB structure for GearNet
-4. Provide PTM quantitation data
-
-The architecture handles variable padding (different proteins can have different numbers of real vs. padded sites) through the existing `is_real_table` mechanism.
-
-### Adding a New PTM Type
-
-To add acetylation alongside phospho and glyco:
-
-1. Define new subtype IDs (e.g., `acetyl_K = 4`)
-2. Increment `N_PTM_TYPES` (4 → 5)
-3. Add acetylation site data to the config
-
-The type embedding table (`nn.Embedding(N_PTM_TYPES, d_model)`) scales automatically. The self-attention mechanism, type gate, and residual gate all work unchanged — they operate on abstract typed tokens, not specific modification types.
-
-### Adding a New Drug
-
-Add the drug's SMILES string to `config/config.yaml` under `drugs`, add its GDSC drug ID, and run the feature extraction pipeline.
-
----
-
-## 7. Evaluation & Ablation
-
-### Ablation Study (5 Arms)
-
-| Model | Description | What it tests |
-|-------|-------------|---------------|
-| A: No PTM | All PTM features zeroed | Is PTM signal needed at all? |
-| E: No glyco | Phospho only | Glycosylation marginal value |
-| F: Glyco only | Glyco only | Phosphorylation marginal value |
-| G: No typed attention | MLP replaces self-attention in PTM-BDL | Do inter-site dependencies matter? |
-| D: Full model | All features + typed self-attention | Production model |
-
-### Validation Protocol
-
-- **Randomized PTM control**: Inference-only permutation test (Breiman 2001, Fisher et al. 2019) — shuffle PTM features at test time, same trained model. If real PTM carries signal, shuffled must perform worse on AUROC and AUPRC-sensitive.
-- **Multi-seed stability**: Train 3× with different seeds, run Integrated Gradients on each → tests whether site importance rankings are reproducible across initializations.
-- **Cross-receptor homology**: EGFR Y1068 and HER2 Y1221 are homologous GRB2-docking sites. Both should independently rank as top effector sites if the model learns biological function rather than protein identity.
-
----
-
-## 8. Benchmarking
-
-Comprehensive benchmarking suite following Nature Methods 2026 standards:
-
-```bash
-make benchmark    # Run ML baselines + external methods + statistical tests + cell-blind split
-make figures      # Generate publication-quality figures + tables (PDF + LaTeX)
-```
-
-### Methods Compared
-
-| Tier | Methods | Purpose |
-|------|---------|---------|
-| Tier 0 | RF, XGBoost, Ridge, Elastic Net | If simple ML matches DL, architecture adds no value |
-| Tier 1 | DIPK (2024), HiDRA (2023), GraTransDRP (2023), TransCDR (2023), PathDSP (2024) | Recent state-of-the-art DRP methods |
-| Tier 2 | GraphDRP (2022), DrugCell (2020), DeepCDR (2020) | Established baselines |
-
-### Statistical Rigor
-
-- Bootstrap 95% confidence intervals (1,000 resamples)
-- DeLong paired AUROC tests (PTM-BDL vs. each baseline)
-- Wilcoxon signed-rank tests on per-drug comparisons
-- Benjamini-Hochberg correction across K baselines
-- Cell-blind LOCLO generalization (leave-one-mutation-class-out)
-
-### Benchmarking Scripts
-
-| Script | Purpose | Output |
-|--------|---------|--------|
-| `step14a_ml_baselines.py` | Tier 0 ML baselines on same 2224-d features | `results/ml_baselines.json` |
-| `step14b_external_baselines.py` | Tier 1–2 external DRP methods | `results/external_baselines/` |
-| `step14c_statistical_tests.py` | Bootstrap CIs, DeLong, Wilcoxon, BH | `results/statistical_tests.json` |
-| `step14d_loclo.py` | Cell-blind LOCLO generalization | `results/loclo_results.json` |
-| `step15a_paper_figures.py` | Camera-ready figures (300 DPI, colorblind-friendly) | `results/publication/figures/*.pdf` |
-| `step15b_paper_tables.py` | LaTeX + CSV tables | `results/publication/tables/*.tex` |
-
----
-
-## 9. Explainability (XAI)
-
-The framework provides three complementary XAI analyses:
-
-### Per-Mod-Type Integrated Gradients
-
-IG attributions bucketed by modification subtype (phospho_Y, phospho_S, phospho_T, glyco_N) and partitioned per protein. Integrates along all 4 input channels simultaneously (level + delta for both phospho and glyco). Per-site importance = |grad_level × Δlevel| + |grad_delta × Δdelta|.
-
-Reference: Sundararajan, Taly & Yan, "Axiomatic Attribution for Deep Networks", ICML 2017.
-
-### Cross-Type Attention Analysis
-
-Post-softmax attention weights from the final PTM-BDL transformer layer, decomposed into four quadrants: phospho→phospho, phospho→glyco, glyco→phospho, glyco→glyco. Non-trivial off-diagonal (phospho↔glyco) attention mass is evidence that the model uses crosstalk between the two PTM types.
-
-### Cross-Receptor Homology Check
-
-Two independent biological validations:
-- **Phospho-Y**: EGFR Y1068 (precursor Y1092) ≡ ERBB2 Y1221 — both are GRB2 docking sites driving RAS-MAPK signaling. If the model learns function (not protein identity), both should rank as top effector sites.
-- **Glyco-N**: EGFR N528 ↔ ERBB2 N530 — extracellular domain IV membrane-proximal anchors (ERBB2 site overlaps trastuzumab-binding interface).
-
----
-
-## 10. Project Structure
+## Project Structure
 
 ```
 PTM-BDL-Framework/
-├── config/
-│   └── config.yaml                 # All parameters: PTM sites, drugs, model, training
-├── scripts/
-│   ├── step01–05_*.py              # Data acquisition (GDSC, CCLE, PDB, UniProt, DrugPTM)
-│   ├── step06_harmonize_dataset.py # Data harmonization → 951-sample dataset
-│   ├── step07–09_*.py              # Feature extraction (ESM-2, GearNet, ChemBERTa)
-│   ├── step10_build_model.py       # Architecture verification
-│   ├── step11_train.py             # Training pipeline
-│   ├── step11b_ablation.py         # 5-arm ablation + stability + randomized control
-│   ├── step11c_crossval.py         # 5-fold cross-validation
-│   ├── step12_evaluate.py          # Per-protein, per-drug, mutation-stratified evaluation
-│   ├── step13_explainability.py    # IG attributions + cross-type attention + homology
-│   ├── step14a–d_*.py              # Benchmarking (ML baselines, external, stats, LOCLO)
-│   └── step15a–b_*.py              # Publication figures & tables
-├── src/models/
-│   └── multimodal_predictor.py     # Core model: PTMBDLEncoder, StaticJointTransformer,
-│                                   #   BilinearLateFusion, MultimodalResistancePredictor
-├── results/                        # Evaluation outputs (JSON + figures)
-│   └── publication/                # Camera-ready figures (PDF) + tables (CSV/LaTeX)
-├── tests/                          # pytest test suite
-├── docs/                           # Technical documentation
-│   ├── PTM_Biological_Dynamics_Layer.md  # Detailed architecture with equations
-│   ├── PAPER_REFERENCES.md               # Bibliography
-│   └── DATA_DOWNLOAD_GUIDE.md            # Manual data download instructions
-├── data/                           # Created by pipeline (gitignored, ~1 GB)
-├── benchmarks/                     # Cloned external method repos (gitignored)
-├── Makefile                        # Pipeline automation
-├── pyproject.toml                  # Dependencies
-├── Dockerfile                      # Reproducible environment
-├── docker-compose.yml              # Multi-profile orchestration
-├── LICENSE                         # MIT License
-└── CITATION.cff                    # Citation metadata
+│
+├── src/ptm_bdl/                        # CORE FRAMEWORK (protein-agnostic)
+│   ├── registry.py                     # Config-driven PTM type/subtype system
+│   ├── model/                          # encoder, ablation, static, fusion, predictor
+│   ├── data/                           # dataset, collate, splits
+│   ├── training/                       # loss, trainer, metrics, factory, threshold
+│   ├── evaluation/                     # evaluator, baselines, statistical, loclo, loader
+│   └── xai/                            # integrated_gradients, attention, homology
+│
+├── src/case_studies/                   # CASE STUDY INSTANCES
+│   ├── common/                         # Shared data pipeline utilities (GDSC, structures, PTM)
+│   ├── egfr_erbb2_tki/                # CS1: EGFR/ERBB2 TKI Resistance (complete)
+│   │   ├── biology.py                  # Application-specific biological constants
+│   │   ├── data_pipeline/              # Steps 01-06: data acquisition + harmonization
+│   │   ├── features/                   # Steps 07-09: ESM-2, GearNet, ChemBERTa
+│   │   └── scripts/                    # Steps 10-15: train, evaluate, explain, benchmark
+│   ├── hela_hdac/                      # CS2: HeLa/HDAC Inhibitors (in progress)
+│   │   ├── biology.py                  # HDAC/HAT drug classifications + PDB structures
+│   │   ├── data_pipeline/              # Steps 01-06 (phospho + NEW acetyl_K PTM type)
+│   │   ├── features/                   # Steps 07-09: ESM-2, GearNet, ChemBERTa
+│   │   └── scripts/                    # train, evaluate, explain, ablation, crossval, etc.
+│   └── k562_cml/                       # CS3: K562/CML BCR-ABL (in progress)
+│       ├── biology.py                  # BCR-ABL substrates + TKI/chemo classifications
+│       ├── data_pipeline/              # Steps 01-06 (5 drugs: 2 TKI + 3 chemo)
+│       ├── features/                   # Steps 07-09: ESM-2, GearNet, ChemBERTa
+│       └── scripts/                    # train, evaluate, explain, ablation, crossval, etc.
+│
+├── tests/                              # pytest test suite
+├── docs/                               # Architecture docs, evaluation, data guide
+└── results/                            # Evaluation outputs + publication figures
 ```
 
 ---
 
-## 11. Dependencies
+## Quick Start
 
-- Python 3.11 (required by torch-geometric)
-- PyTorch 2.1+
-- transformers 5.11+ (for ESM-2, ChemBERTa)
-- fair-esm 2.0+ (for ESM-2)
-- torch-geometric 2.8+ (optional, for GearNet)
-- biotite 1.6+ (for PDB parsing)
+### Prerequisites
 
-See `pyproject.toml` and `requirements.txt` for the full list.
+- **Python 3.11** (required — tested with 3.11.9; must be ≥ 3.11 and < 3.13)
+- **Git**
+- **~4 GB disk space** for pretrained model weights (downloaded on first run)
+- **~1 GB disk space** for raw data files (see [Data Download](#4-download-raw-data) below)
+- **HuggingFace account** — Steps 07 and 09 download pretrained models (ESM-2, ChemBERTa) from HuggingFace Hub
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Moustafazn/PTM-BDL-Framework.git
+cd PTM-BDL-Framework
+```
+
+### 2. Create Virtual Environment (Python 3.11)
+
+```bash
+# Create venv with Python 3.11
+python3.11 -m venv .venv
+
+# Activate the virtual environment
+source .venv/bin/activate          # macOS / Linux
+# .venv\Scripts\activate           # Windows
+```
+
+### 3. Install Dependencies
+
+```bash
+# Install all core dependencies
+pip install -r requirements.txt
+
+# Install PyTorch Geometric (requires matching torch version — must be installed separately)
+pip install torch-geometric -f https://data.pyg.org/whl/torch-2.12.0+cpu.html
+
+# Install the project in editable mode
+pip install -e ".[dev]"
+```
+
+> **Why is `torch-geometric` installed separately?**
+> PyTorch Geometric requires a wheel that matches your exact PyTorch version and platform.
+> It cannot be installed via a standard `pip install -r requirements.txt` — the `-f` flag
+> points pip to the correct version-matched wheel index.
+>
+> **If `pip install -r requirements.txt` tries to upgrade torch and times out**, install
+> the missing packages individually instead:
+> ```bash
+> pip install fair-esm biotite xgboost
+> pip install torch-geometric -f https://data.pyg.org/whl/torch-2.12.0+cpu.html
+> ```
+
+### 4. Download Raw Data
+
+Raw data files must be downloaded manually before running the pipeline.
+See [`docs/DATA_DOWNLOAD_GUIDE.md`](docs/DATA_DOWNLOAD_GUIDE.md) for complete instructions.
+
+**Quick option** — download the pre-packaged archive:
+```bash
+# Download from GitHub Releases and extract:
+tar -xzf data_raw.tar.gz
+```
+
+**Required data sources:**
+
+| Source | Files | Size | Place In |
+|--------|-------|------|----------|
+| [GDSC2 (Sanger)](https://cellmodelpassports.sanger.ac.uk/downloads) | IC50 dose-response + model list | ~22 MB | `data/raw/gdsc/` |
+| [DepMap (Broad)](https://depmap.org/portal/data_page/?tab=allData) | Somatic mutations + model info | ~900 MB | `data/raw/ccle/` |
+| [UniProt](https://www.uniprot.org) | EGFR/HER2 FASTA + PTM JSON | ~1 MB | `data/raw/ccle/`, `data/raw/ptm/` |
+| [RCSB PDB](https://www.rcsb.org) | Crystal structures (11 PDB files) | ~10 MB | `data/raw/pdb/` |
+| [DrugPTM-Bench](https://github.com/Xie-lab/DrugPTM-Bench) | Cell line phosphoproteomics | ~3 GB | `data/raw/drugptm/` |
+
+### 5. HuggingFace Setup (for pretrained model downloads)
+
+Steps 07 (ESM-2) and 09 (ChemBERTa) download pretrained models from HuggingFace Hub.
+To avoid rate limits and enable faster downloads:
+
+1. **Create a HuggingFace account**: https://huggingface.co/join
+2. **Accept model licenses** (visit each page and click "Agree"):
+   - ESM-2: https://huggingface.co/facebook/esm2_t33_650M_UR50D
+   - ChemBERTa: https://huggingface.co/DeepChem/ChemBERTa-77M-MTR (public, no gate)
+3. **Create an access token**: https://huggingface.co/settings/tokens → "New token" → "Read"
+4. **Login** (run once):
+   ```bash
+   hf auth login
+   # Paste your token when prompted
+   ```
+
+> **Note**: If you skip this step, the pipeline will still run but with unauthenticated
+> requests (slower downloads, rate limits). Steps 07 and 09 will NOT crash.
+
+### 6. Pre-Download Pretrained Models (optional but recommended)
+
+Steps 07 and 09 automatically download models on first run, but you can pre-cache them
+to avoid delays during pipeline execution:
+
+```bash
+# Pre-download ESM-2 (protein language model, ~2.5 GB)
+hf download facebook/esm2_t33_650M_UR50D
+
+# Pre-download ChemBERTa (drug embedding model, ~300 MB)
+hf download DeepChem/ChemBERTa-77M-MTR
+```
+
+
+> **Step 08 structural embeddings** tries three backends in order:
+> 1. **ESM-IF1** (best — pretrained GVP encoder): requires `fair-esm` + `biotite`
+> 2. **PyG GNN** (good — trainable Xavier-init GNN): requires `torch-geometric`
+> 3. **Basic fallback** (functional — Xavier-initialized GNN): only needs `torch` + `biopython`
+>
+> For best results, all three packages should be installed (step 3 above).
+
+### Docker (recommended for reproducibility)
+
+```bash
+docker compose up                        # Run ALL case studies
+docker compose --profile egfr up         # EGFR/ERBB2 only
+docker compose --profile hela up         # HeLa/HDAC only
+docker compose --profile k562 up         # K562/CML only
+docker compose --profile test up         # Test suite
+docker compose run shell                 # Interactive shell
+```
 
 ---
 
-## 12. Authors
+## Running Case Studies
 
-- **Moustafa Zein** — Lead developer
-- **Prof. Aboul Ella Hassanien** — Co-author
+### Using Make (simplest)
+
+```bash
+make egfr        # CS1: EGFR/ERBB2 TKI Resistance (NSCLC + breast)
+make hela        # CS2: HeLa/HDAC Inhibitors (phospho + acetyl)
+make k562        # CS3: K562/CML BCR-ABL (TKI + chemo)
+make all         # All three case studies
+```
+
+Run individual phases for a specific case study:
+
+```bash
+make data CASE=hela         # Steps 01-05: download + process data
+make harmonize CASE=hela    # Step 06: build multimodal dataset
+make features CASE=hela     # Steps 07-09: extract ESM-2, GearNet, ChemBERTa
+make train CASE=hela        # Train + ablation + cross-validation
+make evaluate CASE=hela     # Evaluation + XAI
+make benchmark CASE=hela    # ML baselines + external methods + LOCLO
+make figures CASE=hela      # Publication figures + tables
+```
+
+### Running Step-by-Step
+
+Each case study has its own complete pipeline. Replace `<cs>` with the case study module name:
+- `egfr_erbb2_tki` — EGFR/ERBB2 TKI resistance
+- `hela_hdac` — HeLa/HDAC inhibitors
+- `k562_cml` — K562/CML BCR-ABL
+
+**Data Pipeline (Steps 01-06):**
+
+```bash
+python -m src.case_studies.<cs>.data_pipeline.step01_download_gdsc
+python -m src.case_studies.<cs>.data_pipeline.step02_download_sequences
+python -m src.case_studies.<cs>.data_pipeline.step03_download_structures
+python -m src.case_studies.<cs>.data_pipeline.step04_download_ptm_data
+python -m src.case_studies.<cs>.data_pipeline.step05_download_drugptm
+python -m src.case_studies.<cs>.data_pipeline.step06_harmonize_dataset
+```
+
+**Feature Extraction (Steps 07-09):**
+
+```bash
+python -m src.case_studies.<cs>.features.step07_extract_esm2       # ESM-2 protein embeddings (uses transformers)
+python -m src.case_studies.<cs>.features.step08_extract_gearnet    # Structural embeddings (uses fair-esm/biotite/PyG)
+python -m src.case_studies.<cs>.features.step09_extract_chemberta  # ChemBERTa drug embeddings (uses transformers)
+```
+
+**Analysis & Evaluation:**
+
+```bash
+python -m src.case_studies.<cs>.scripts.train              # Train PTM-BDL model
+python -m src.case_studies.<cs>.scripts.evaluate           # Comprehensive evaluation
+python -m src.case_studies.<cs>.scripts.explain            # XAI (IG + attention)
+python -m src.case_studies.<cs>.scripts.ablation           # Modality ablation study
+python -m src.case_studies.<cs>.scripts.crossval           # K-fold cross-validation
+python -m src.case_studies.<cs>.scripts.ml_baselines       # ML baseline comparison
+python -m src.case_studies.<cs>.scripts.external_baselines # Published methods
+python -m src.case_studies.<cs>.scripts.statistical_tests  # Bootstrap CIs
+python -m src.case_studies.<cs>.scripts.loclo              # LOCLO generalization
+python -m src.case_studies.<cs>.scripts.paper_figures      # Publication figures
+python -m src.case_studies.<cs>.scripts.paper_tables       # Publication tables
+```
 
 ---
 
-## 13. Citation
+## Using PTM-BDL as a Package
+
+After publication, PTM-BDL can be installed and used in any Python project:
+
+### Installation
+
+```bash
+pip install ptm-bdl-framework
+# or from source:
+pip install git+https://github.com/Moustafazn/PTM-BDL-Framework.git
+```
+
+### Model Input/Output Specification
+
+**Inputs** (all tensors, batch dimension B):
+
+| Input                | Shape              | Type    | Description                                       |
+|----------------------|--------------------|---------|---------------------------------------------------|
+| `seq_embeddings`     | (B, L, 1280)       | float32 | ESM-2 per-residue protein embeddings              |
+| `struct_embeddings`  | (B, M, 512)        | float32 | GearNet per-residue structural embeddings         |
+| `drug_pooled`        | (B, 384)           | float32 | ChemBERTa pooled drug embedding                   |
+| `drug_embeddings`    | (B, N, 384)        | float32 | ChemBERTa per-token drug embeddings (optional)    |
+| `ptm_vector`              | (B, n_primary_sites)   | float32 | Baseline primary PTM occupancy per site (1.0 = wild-type) |
+| `delta_ptm_vector`        | (B, n_primary_sites)   | float32 | Drug-induced primary PTM change per site (0.0 = no drug)  |
+| `secondary_vector`        | (B, n_secondary_sites) | float32 | Baseline secondary PTM occupancy per site                 |
+| `delta_secondary_vector`  | (B, n_secondary_sites) | float32 | Drug-induced secondary PTM change per site                |
+| `target_protein`          | (B,)                   | long    | Protein ID index (0, 1, 2, ...)                           |
+
+**Outputs**:
+
+| Output              | Shape  | Type    | Description                                       |
+|---------------------|--------|---------|---------------------------------------------------|
+| `ic50_pred`         | (B, 1) | float32 | Predicted ln(IC50) drug sensitivity               |
+| `resistance_logits` | (B, 1) | float32 | Resistance logits (apply sigmoid for probability) |
+
+### Minimal Example — Build, Train, Predict
+
+```python
+import torch
+import yaml
+from src.ptm_bdl.training import build_model_from_cfg, FocalLoss, train_epoch, validate
+from src.ptm_bdl.evaluation.evaluator import collect_predictions, compute_full_metrics
+
+# 1. Load config (framework + case study settings)
+with open("config/config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+# 2. Build model — all PTM types, subtypes, and embeddings auto-configured
+model = build_model_from_cfg(cfg)
+print(f"Model: {sum(p.numel() for p in model.parameters()):,} parameters")
+
+# 3. Prepare a single sample (example dimensions)
+sample = {
+    "seq_emb": torch.randn(1, 100, 1280),  # ESM-2 protein embeddings
+    "struct_emb": torch.randn(1, 80, 512),  # GearNet structural embeddings
+    "drug_pooled": torch.randn(1, 384),  # ChemBERTa pooled
+    "drug_emb": torch.randn(1, 20, 384),  # ChemBERTa per-token
+    "ptm_vector": torch.ones(1, 12),  # Primary PTM baseline (12 sites)
+    "delta_ptm_vector": torch.zeros(1, 12),  # Drug-induced primary PTM change
+    "secondary_vector": torch.ones(1, 12),  # Secondary PTM baseline (12 sites)
+    "delta_secondary_vector": torch.zeros(1, 12),  # Drug-induced secondary PTM change
+    "target_protein": torch.tensor([0]),  # Protein ID (0=first protein)
+}
+
+# 4. Forward pass
+model.eval()
+with torch.no_grad():
+    ic50_pred, resistance_logits = model(
+        seq_embeddings=sample["seq_emb"],
+        struct_embeddings=sample["struct_emb"],
+        drug_pooled=sample["drug_pooled"],
+        drug_embeddings=sample["drug_emb"],
+        ptm_vector=sample["ptm_vector"],
+        delta_ptm_vector=sample["delta_ptm_vector"],
+        secondary_vector=sample["secondary_vector"],
+        delta_secondary_vector=sample["delta_secondary_vector"],
+        target_protein=sample["target_protein"],
+    )
+
+print(f"Predicted ln(IC50): {ic50_pred.item():.3f}")
+print(f"P(resistance): {torch.sigmoid(resistance_logits).item():.3f}")
+
+# 5. Training loop (with your DataLoader)
+focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100)
+
+# train_epoch handles one full epoch:
+train_loss = train_epoch(model, train_loader, optimizer, scheduler,
+                         focal_loss, lambda_reg=1.0, lambda_cls=2.0, device="cpu")
+
+# validate returns comprehensive metrics:
+val_metrics = validate(model, val_loader, focal_loss, 1.0, 2.0, "cpu")
+print(f"Val AUROC: {val_metrics['auroc']:.3f}, BAcc: {val_metrics['balanced_acc']:.3f}")
+```
+
+### Framework Utilities — Training & Evaluation
+
+The framework provides shared utilities that ensure consistent behavior across all case studies:
+
+```python
+from src.ptm_bdl.training import compute_optimal_threshold
+from src.ptm_bdl.evaluation.evaluator import (
+    collect_predictions, compute_full_metrics,
+    load_threshold, make_eval_loader,
+)
+
+# After training — compute optimal classification threshold (Youden's J)
+# Finds the probability threshold that maximizes (sensitivity + specificity)
+# on the validation set. Essential when focal loss shifts probabilities away from 0.5.
+# Ref: Youden WJ (1950) Cancer 3:32-35.
+threshold_info = compute_optimal_threshold(model, val_loader, device)
+# Returns: {"optimal_threshold": 0.38, "method": "Youden_J", "reference": "..."}
+
+# During evaluation — load the saved threshold
+threshold = load_threshold(model_dir)  # Loads optimal_threshold.json, falls back to 0.5
+
+# Create evaluation DataLoaders from index arrays (consistent across all scripts)
+loader = make_eval_loader(dataset, test_idx, batch_size=32, collate_fn=collate_fn)
+
+# Collect predictions and compute metrics with calibrated threshold
+y_true_ic50, y_pred_ic50, y_true_cls, y_prob_cls = collect_predictions(model, loader)
+regression, classification = compute_full_metrics(
+    y_true_ic50, y_pred_ic50, y_true_cls, y_prob_cls,
+    threshold=threshold,
+)
+```
+
+### Using the PTMTypeRegistry Directly
+
+```python
+from src.ptm_bdl.registry import PTMTypeRegistry
+
+# Build registry from config
+registry = PTMTypeRegistry.from_config(cfg)
+
+# Query the registry
+print(f"PTM subtypes: {registry.n_subtypes}")    # e.g. 4
+print(f"Tokens per sample: {registry.n_tokens}")  # e.g. 24 (12 primary + 12 secondary)
+print(f"Proteins: {registry.protein_names}")       # e.g. ['PROTEIN_A', 'PROTEIN_B']
+print(f"Subtype names: {registry.subtype_names}")  # e.g. {0: 'primary_Y', 1: 'primary_S', ...}
+
+# Get site labels for XAI reporting
+labels = registry.get_flat_site_labels(registry.protein_names[0])
+print(f"Sites: {labels[:5]}")
+
+# Get buffer tensors (used by the encoder)
+print(f"Type ID table shape: {registry.type_id_table.shape}")  # (2, 24)
+print(f"Is-real table shape: {registry.is_real_table.shape}")  # (2, 24)
+```
+
+### Adding a New Case Study (Separate Project)
+
+To use PTM-BDL in your own project for a different biological system:
+
+```python
+# your_project/train_my_model.py
+import yaml
+from src.ptm_bdl.training import build_model_from_cfg, FocalLoss, train_epoch, validate
+from src.ptm_bdl.data import ResistanceDataset, collate_fn
+
+# Your config defines YOUR proteins, PTM types, and drugs
+my_config = {
+    "model": {"shared_dim": 512, "num_joint_attention_layers": 4,
+              "num_attention_heads": 8, "dropout": 0.1,
+              "learning_rate": 1e-4, "weight_decay": 1e-5,
+              "batch_size": 16, "num_epochs": 100, "early_stopping_patience": 15},
+    "ptm_bdl": {"d_model": 64, "n_heads": 4, "n_layers": 2},
+    "ptm": {
+        "ptm_dim": 10,  # YOUR number of primary PTM sites
+        "secondary_dim": 8,  # YOUR number of secondary PTM sites (0 or omit if none)
+        # Also accepts "glyco_dim" (legacy alias for secondary_dim)
+        "YOUR_PROTEIN": {
+            "phospho_sites": [
+                {"position": 100, "residue": "Y100", "amino_acid": "Y", "function": "kinase substrate"},
+                # ... your primary PTM sites (first *_sites key → primary channel)
+            ],
+            # Optional secondary channel — ANY additional *_sites key:
+            # "acetyl_sites": [   # acetylation
+            #     {"position": 200, "residue": "K200", "amino_acid": "K", "function": "regulatory"},
+            # ],
+            # "glyco_sites": [    # glycosylation
+            #     {"position": 50, "residue": "N50", "amino_acid": "N", "function": "extracellular"},
+            # ],
+        },
+    },
+}
+
+# Build model — auto-configures for YOUR proteins and PTM types
+model = build_model_from_cfg(my_config)
+
+# Train on YOUR data using the same training infrastructure
+# ... (same API as above)
+```
+
+**The framework requires ZERO code changes to support your biological system.**
+
+---
+
+## Configuration
+
+Framework-level settings are in `src/ptm_bdl/default_config.yaml` (shipped with the package).
+Case-study-specific settings are in each case study's `config.yaml`.
+
+```python
+from src.ptm_bdl.config import load_config
+
+# Load merged config (base framework + EGFR/ERBB2 case study)
+cfg = load_config(case_study="egfr_erbb2_tki")
+
+# Load base framework config only
+cfg = load_config(case_study=None)
+```
+
+**Framework defaults** (`src/ptm_bdl/default_config.yaml`):
+
+```yaml
+model:
+  shared_dim: 512
+  num_joint_attention_layers: 4
+  num_attention_heads: 8
+  learning_rate: 1.0e-4
+  batch_size: 16
+
+ptm_bdl:
+  d_model: 64
+  n_heads: 4
+  n_layers: 2
+
+training:
+  seed: 42
+  train_ratio: 0.7
+  val_ratio: 0.15
+  device: "auto"  # "auto" selects best available: cuda > mps > cpu
+```
+
+**Case-study-specific settings** (proteins, drugs, PTM sites, tissue filters) are in
+`src/case_studies/egfr_erbb2_tki/config.yaml`. The `load_config` function deep-merges both configs automatically.
+
+---
+
+## Dependencies
+
+All dependencies are required for the full pipeline. Install with `pip install -r requirements.txt`.
+
+| Package | Version | Used By | Purpose |
+|---------|---------|---------|---------|
+| Python | ≥ 3.11, < 3.13 | All | Language runtime |
+| PyTorch | ≥ 2.1 | Steps 07-09, training | Deep learning backend |
+| transformers | ≥ 4.36 | Steps 07, 09 | ESM-2 protein + ChemBERTa drug model loading |
+| fair-esm | ≥ 2.0 | Step 08 | ESM-IF1 pretrained structural encoder |
+| biotite | ≥ 1.0 | Step 08 | PDB parsing for ESM-IF1 |
+| torch-geometric | ≥ 2.4 | Step 08 | PyG GearNet structural GNN (separate install) |
+| biopython | ≥ 1.84 | Steps 02-03, 08 | FASTA/PDB parsing |
+| scikit-learn | ≥ 1.3 | Evaluation | Metrics, data splits, ML baselines |
+| xgboost | ≥ 2.0 | ML baselines | Gradient boosting comparison |
+| pandas | ≥ 2.0 | Steps 01-06 | Data processing |
+| openpyxl | ≥ 3.1 | Steps 01, 04-05 | Excel file reading |
+
+See [`pyproject.toml`](pyproject.toml) for the full list.
+
+> **Note on `torch-geometric`**: This package must be installed separately after PyTorch because
+> it requires a version-matched wheel. See [installation step 3](#3-install-dependencies) above.
+
+---
+
+## Documentation
+
+| Document                                                       | Description                                      |
+|----------------------------------------------------------------|--------------------------------------------------|
+| [`docs/DATA_DOWNLOAD_GUIDE.md`](docs/DATA_DOWNLOAD_GUIDE.md)  | Manual data download instructions (per-step, per-source) |
+
+---
+
+## Tests
+
+```bash
+make test
+# or
+python -m pytest tests/ -v --tb=short
+```
+
+---
+
+## Citation
 
 ```bibtex
 @software{zein2026ptmbdl,
-  title     = {Multimodal Self-Attention with {PTM} Biological Dynamics Layer:
-               A {PTM} Foundational Framework for Drug Response Prediction},
-  author    = {Zein, Moustafa and Hassanien, Aboul Ella},
-  year      = {2026},
-  url       = {https://github.com/Moustafazn/PTM-BDL-Framework},
+  title  = {Multimodal Self-Attention with {PTM} Biological Dynamics Layer:
+            A {PTM} Framework for Drug Response Prediction},
+  author = {Zein, Moustafa and Hassanien, Aboul Ella},
+  year   = {2026},
+  url    = {https://github.com/Moustafazn/PTM-BDL-Framework},
 }
 ```
 
----
+## License
 
-## 14. License
-
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE).

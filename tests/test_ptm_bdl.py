@@ -6,13 +6,13 @@ attention weights, cross-token independence (MLP), and biological constraints.
 """
 
 import torch
-from src.models.multimodal_predictor import (
+
+from src.ptm_bdl.model import (
     PTMBDLEncoder, PTMBDLMlpAblation,
     N_PTM_TYPES,
 )
-
 # noinspection PyProtectedMember
-from src.models.multimodal_predictor import (
+from src.ptm_bdl.model import (
     _TYPE_Y, _TYPE_S, _TYPE_T, _TYPE_N,
     _PAD_EGFR, _PAD_ERBB2,
 )
@@ -32,8 +32,8 @@ class TestPTMBDLEncoder:
         return enc(
             ptm_vector=torch.ones(1, 12),
             delta_ptm_vector=torch.zeros(1, 12),
-            glyco_vector=torch.ones(1, 12),
-            delta_glyco_vector=torch.zeros(1, 12),
+            secondary_vector=torch.ones(1, 12),
+            delta_secondary_vector=torch.zeros(1, 12),
             target_protein=torch.tensor([protein_id]),
         )
 
@@ -64,30 +64,30 @@ class TestPTMBDLEncoder:
         assert not mask[10].item()  # pad
         assert not mask[11].item()  # pad
 
-    def test_erbb2_glyco_pads_at_19_to_23(self):
+    def test_erbb2_secondary_pads_at_19_to_23(self):
         out = self._run(self._make(), protein_id=1)
         mask = out["mask"][0]
         for i in range(19, 24):
             assert not mask[i].item(), f"Slot {i} should be padded"
 
-    def test_glyco_type_ids_all_N(self):
+    def test_secondary_type_ids_all_N(self):
         out = self._run(self._make(), protein_id=0)
-        glyco_types = out["type_ids"][0, 12:].unique().tolist()
-        assert glyco_types == [_TYPE_N]
+        secondary_types = out["type_ids"][0, 12:].unique().tolist()
+        assert secondary_types == [_TYPE_N]
 
     def test_phospho_types_include_Y_S_T(self):
         out = self._run(self._make(), protein_id=0)
         phospho_types = set(out["type_ids"][0, :12].tolist())
         assert _TYPE_Y in phospho_types  # At least Y
-        assert len(phospho_types) >= 2    # Should have Y + S or T
+        assert len(phospho_types) >= 2  # Should have Y + S or T
 
     def test_attention_weights_shape(self):
         enc = self._make()
         attn = enc.compute_attn_weights(
             ptm_vector=torch.ones(2, 12),
             delta_ptm_vector=torch.zeros(2, 12),
-            glyco_vector=torch.ones(2, 12),
-            delta_glyco_vector=torch.zeros(2, 12),
+            secondary_vector=torch.ones(2, 12),
+            delta_secondary_vector=torch.zeros(2, 12),
             target_protein=torch.tensor([0, 1]),
         )
         assert attn.shape == (2, 24, 24)
@@ -97,8 +97,8 @@ class TestPTMBDLEncoder:
         attn = enc.compute_attn_weights(
             ptm_vector=torch.ones(1, 12),
             delta_ptm_vector=torch.zeros(1, 12),
-            glyco_vector=torch.ones(1, 12),
-            delta_glyco_vector=torch.zeros(1, 12),
+            secondary_vector=torch.ones(1, 12),
+            delta_secondary_vector=torch.zeros(1, 12),
             target_protein=torch.tensor([0]),
         )
         row_sums = attn[0].sum(dim=-1)
@@ -110,13 +110,13 @@ class TestPTMBDLEncoder:
         out = enc(
             ptm_vector=torch.ones(3, 12),
             delta_ptm_vector=torch.zeros(3, 12),
-            glyco_vector=torch.ones(3, 12),
-            delta_glyco_vector=torch.zeros(3, 12),
+            secondary_vector=torch.ones(3, 12),
+            delta_secondary_vector=torch.zeros(3, 12),
             target_protein=torch.tensor([0, 1, 0]),
         )
-        assert out["mask"][0].sum().item() == 24   # EGFR
-        assert out["mask"][1].sum().item() == 17   # ERBB2
-        assert out["mask"][2].sum().item() == 24   # EGFR
+        assert out["mask"][0].sum().item() == 24  # EGFR
+        assert out["mask"][1].sum().item() == 17  # ERBB2
+        assert out["mask"][2].sum().item() == 24  # EGFR
 
     def test_different_inputs_different_pooled(self):
         enc = self._make()
@@ -193,11 +193,11 @@ class TestBiologicalConstants:
         assert _TYPE_Y == 0  # phospho-tyrosine
         assert _TYPE_S == 1  # phospho-serine
         assert _TYPE_T == 2  # phospho-threonine
-        assert _TYPE_N == 3  # N-glycosylation
+        assert _TYPE_N == 3  # N-linked secondary PTM
 
     def test_egfr_no_pads(self):
         assert _PAD_EGFR == [False] * 24
 
     def test_erbb2_pad_count(self):
         n_pad = sum(1 for x in _PAD_ERBB2 if x)
-        assert n_pad == 7  # 2 phospho + 5 glyco pads
+        assert n_pad == 7  # 2 phospho + 5 secondary pads

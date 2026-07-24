@@ -1,0 +1,52 @@
+# ============================================================================
+# PTM-BDL FRAMEWORK — Base Configuration
+# ============================================================================
+# Framework-level settings shared across ALL case studies.
+# Case-study-specific settings (proteins, drugs, PTM sites) are defined in
+# each case study's own config.yaml file.
+# ============================================================================
+
+# ── Directory Layout ─────────────────────────────────────────────────────────
+paths:
+  raw_data: "data/raw"
+  processed_data: "data/processed"
+  features: "data/features"
+  models: "data/models"
+  results: "results"
+  figures: "results/figures"
+
+# ── Model Architecture ───────────────────────────────────────────────────────
+model:
+  shared_dim: 512
+  num_joint_attention_layers: 4
+  num_attention_heads: 8
+  dropout: 0.1
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-5
+  batch_size: 16
+  num_epochs: 100
+  early_stopping_patience: 15
+  esm2_model: "facebook/esm2_t33_650M_UR50D"
+  chemberta_model: "DeepChem/ChemBERTa-77M-MTR"
+  gearnet_hidden_dim: 512
+
+# ── PTM-BDL Block Hyperparameters ────────────────────────────────────────────
+# Per-sample typed self-attention block for PTM tokens.
+# d_model, n_heads, n_layers are intentionally small — the BDL works on at
+# most N tokens per sample, so it must NOT dominate the parameter budget
+# of the static seq/struct/drug branch (which uses shared_dim=512).
+ptm_bdl:
+  d_model: 64
+  n_heads: 4
+  n_layers: 2
+  pool: "mask_aware_mean"
+  use_typed_attention: true
+
+# ── Training Settings ────────────────────────────────────────────────────────
+training:
+  seed: 42
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  num_workers: 4
+  device: "auto"  # "auto" selects best available: cuda > mps > cpu

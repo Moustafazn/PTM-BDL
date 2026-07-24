@@ -1,0 +1,656 @@
+# ============================================================================
+# CONFIGURATION — PTM-Driven ERBB Family Drug Resistance Project
+# ============================================================================
+# Central configuration for all pipeline scripts.
+# Edit paths and parameters here; every script reads from this file.
+#
+# CANCER FOCUS: EGFR-mutant NSCLC + HER2-positive
+# breast cancer.  Pipeline steps filter data to both tissue types and the
+# 6 ERBB-family TKI drugs listed below.
+#
+# ALL DATA IS MANUALLY DOWNLOADED — no auto-download in any script.
+# Each script checks data/raw/<source>/ for files and prints instructions
+# if anything is missing. Processed outputs go to data/processed/<source>/.
+# ============================================================================
+
+# ── Case Study Identity ───────────────────────────────────────────────────────
+case_study: egfr_erbb2_tki
+
+# ── Project Scope ─────────────────────────────────────────────────────────────
+project:
+  cancer_types:
+    - "Non-Small Cell Lung Cancer (NSCLC)"
+    - "Breast Cancer (HER2+)"
+  # Gene-aware tissue filters: each target gene has its own tissue regex
+  tissue_filters:
+    EGFR: "LUAD|LUSC|NSCLC|lung"                    # Lung cancer for EGFR
+    ERBB2: "BRCA|breast|Breast Carcinoma"              # Breast cancer for HER2
+  target_proteins:
+    - "EGFR"
+    - "ERBB2"
+  target_drugs:
+    - Gefitinib     # 1st-gen EGFR, reversible
+    - Afatinib      # 2nd-gen pan-ERBB, irreversible (targets EGFR + HER2)
+    - Erlotinib     # 1st-gen EGFR, reversible
+    - Osimertinib   # 3rd-gen EGFR, targets T790M
+    - Lapatinib     # 1st-gen EGFR/HER2 dual TKI, reversible
+    - Sapitinib     # pan-ERBB (EGFR + ERBB2 + ERBB3), reversible
+    # NOTE: Neratinib (ID 2097) is NOT in GDSC2 Oct 2023 release — removed
+
+# ── Directory Layout ─────────────────────────────────────────────────────────
+paths:
+  raw_data: "data/raw"          # manually downloaded files (input)
+  processed_data: "data/processed"    # script-generated outputs
+  features: "data/features"     # ML embeddings (ESM-2, GearNet, ChemBERTa)
+  models: "data/models"       # trained model checkpoints
+  results: "results"           # evaluation reports
+  figures: "results/figures"   # plots and visualizations
+
+# ── GDSC Drug Response Data ──────────────────────────────────────────────────
+# Source: Sanger Cell Model Passports (formerly cancerrxgene.org)
+# Download: https://cellmodelpassports.sanger.ac.uk/downloads
+#   → "Drug Sensitivity Data" → "GDSC2 IC50 Data" → download GDSC2 dataset
+#   → "Model Annotation" → "Model List" → download list of annotated models
+# Place files in: data/raw/gdsc/
+# ─────────────────────────────────────────────────────────────────────────────
+gdsc:
+  drug_ids:
+    # EGFR-targeting TKIs (tested on NSCLC + breast cancer)
+    Osimertinib: 1919    # 3rd-gen EGFR TKI, targets T790M (AZD9291)
+    Gefitinib: 1010    # 1st-gen EGFR TKI, reversible
+    Afatinib: 1032    # 2nd-gen pan-ERBB TKI, irreversible (EGFR + HER2)
+    Erlotinib: 1168    # 1st-gen EGFR TKI, reversible
+    # HER2/pan-ERBB TKIs — added for ERBB family expansion
+    Lapatinib: 1558    # 1st-gen EGFR/HER2 dual TKI, reversible
+    Sapitinib: 1549    # pan-ERBB (EGFR + ERBB2 + ERBB3), reversible
+    # NOTE: Neratinib (ID 2097) is NOT in GDSC2 Oct 2023 release — removed
+  # Drug-to-protein mapping: which target_protein(s) each drug is used in.
+  # ALL drugs are tested on BOTH NSCLC (EGFR) and breast (ERBB2) cell lines
+  # in GDSC2. This dual-context approach maximizes data and lets the model
+  # learn cross-receptor drug response patterns.
+  # GDSC2 diagnostic (Oct 2023): 52 breast cancer cell lines, ~160 NSCLC lines.
+  drug_protein_mapping:
+    Osimertinib: [ "EGFR", "ERBB2" ]   # NSCLC + breast (51 breast lines, 13 sens)
+    Gefitinib: [ "EGFR", "ERBB2" ]   # NSCLC + breast (51 breast lines, 1 sens)
+    Afatinib: [ "EGFR", "ERBB2" ]   # pan-ERBB: NSCLC + breast (50 breast lines, 9 sens)
+    Erlotinib: [ "EGFR", "ERBB2" ]   # NSCLC + breast (51 breast lines, 0 sens)
+    Lapatinib: [ "ERBB2" ]           # dual EGFR/HER2, breast only (51 lines, 6 sens)
+    Sapitinib: [ "ERBB2" ]           # pan-ERBB, breast only (targets EGFR+ERBB2+ERBB3)
+
+# ── CCLE / DepMap Mutation Data ──────────────────────────────────────────────
+# Source: DepMap (Broad Institute)
+# Download: https://depmap.org/portal/data_page/?tab=allData
+#   → Search "OmicsSomaticMutations" → download CSV (~300 MB)
+#   → Search "Model" → download Model.csv
+# Also download EGFR FASTA: https://www.uniprot.org/uniprot/P00533.fasta
+# Place files in: data/raw/ccle/
+# ─────────────────────────────────────────────────────────────────────────────
+ccle:
+  gene_symbols:
+    - "EGFR"
+    - "ERBB2"
+
+# ── PDB Crystal Structures ──────────────────────────────────────────────────
+# Source: RCSB Protein Data Bank (https://www.rcsb.org/)
+# Download each PDB file and place in: data/raw/pdb/
+#   curl -o <ID>.pdb https://files.rcsb.org/download/<ID>.pdb
+# ─────────────────────────────────────────────────────────────────────────────
+pdb:
+  # ── STRUCTURE ASSIGNMENT PHILOSOPHY ─────────────────────────────────────
+  # Structures are assigned MUTATION-DRIVEN, not drug-driven.
+  # Each EGFR mutation class maps to ONE representative structure regardless
+  # of which drug the sample is paired with.  This prevents the structural
+  # branch (GearNet) from leaking drug identity and instead captures
+  # mutation-induced conformational changes.
+  #
+  # Drug binding information is separately captured by ChemBERTa (step09)
+  # and the PTM-structure integration (step10).
+  #
+  # Mapping (in step06 map_mutations_to_pdb):
+  #   Wild-type (inactive)       → 2GS6  (WT apo)
+  #   L858R (active)             → 2JIT  (L858R mutant)
+  #   Exon 19 del (active)       → 4HJO  (del(E746-A750) mutant)
+  #   L858R/T790M (double)       → 5EDP  (double mutant apo)
+  #   T790M (gatekeeper)         → 3IKA  (T790M + WZ4002)
+  #   L858R/T790M/C797S (triple) → 6LUD  (triple + Osimertinib)
+  # ────────────────────────────────────────────────────────────────────────
+  structures:
+    # ── Mutation-driven structures (used in step06 mapping) ──────────────
+    - id: "2GS6"
+      description: "Wild-type EGFR kinase domain (apo, inactive conformation)"
+      mutations: [ ]
+      drug: null
+      mapping_role: "WT / passenger / VUS"
+    - id: "2JIT"
+      description: "EGFR L858R mutant kinase domain (active conformation, 2.47Å)"
+      mutations: [ "L858R" ]
+      drug: null
+      mapping_role: "L858R / other activating point mutations"
+      reference: "Stamos et al., JBC 2002 (PMID 12183436)"
+    - id: "4HJO"
+      description: "EGFR exon 19 deletion (del E746-A750) kinase domain (active conformation, 1.8Å)"
+      mutations: [ "E746_A750del" ]
+      drug: null
+      mapping_role: "Exon 19 deletions / exon 19 region variants"
+      reference: "Yasuda et al., Sci Transl Med 2013 (PMID 23550210)"
+    - id: "5EDP"
+      description: "EGFR L858R/T790M double mutant (apo, 2.9Å)"
+      mutations: [ "L858R", "T790M" ]
+      drug: null
+      mapping_role: "L858R/T790M double mutant"
+    - id: "3IKA"
+      description: "EGFR T790M mutant + WZ4002 (3rd-gen covalent inhibitor)"
+      mutations: [ "T790M" ]
+      drug: "WZ4002"
+      mapping_role: "T790M gatekeeper (without L858R)"
+    - id: "6LUD"
+      description: "EGFR L858R/T790M/C797S + Osimertinib (triple mutant, full resistance)"
+      mutations: [ "L858R", "T790M", "C797S" ]
+      drug: "osimertinib"
+      mapping_role: "C797S / triple mutant resistance"
+    # ── Legacy drug-bound WT structures (kept for reference, not used in mapping) ──
+    - id: "2ITY"
+      description: "Wild-type EGFR + Gefitinib (1st-gen TKI) — reference only"
+      mutations: [ ]
+      drug: "gefitinib"
+      mapping_role: "reference_only"
+    - id: "4ZAU"
+      description: "Wild-type EGFR + Osimertinib/AZD9291 (3rd-gen TKI) — reference only"
+      mutations: [ ]
+      drug: "osimertinib"
+      mapping_role: "reference_only"
+    - id: "4G5J"
+      description: "EGFR + Afatinib (2nd-gen irreversible TKI) — reference only"
+      mutations: [ ]
+      drug: "afatinib"
+      mapping_role: "reference_only"
+    # ── HER2 (ERBB2) structures — added for ERBB family expansion ───────
+    - id: "3PP0"
+      description: "HER2 kinase domain (apo, active conformation, 2.25Å)"
+      target_protein: "ERBB2"
+      mutations: [ ]
+      drug: null
+      mapping_role: "HER2 WT / HER2-amplified"
+      reference: "Aertgeerts et al., JBC 2011 (PMID 21393237)"
+    - id: "3RCD"
+      description: "HER2 kinase domain + Lapatinib (DFG-out inactive, 2.40Å)"
+      target_protein: "ERBB2"
+      mutations: [ ]
+      drug: "lapatinib"
+      mapping_role: "reference_only"
+      reference: "Aertgeerts et al., JBC 2011 (PMID 21393237)"
+
+# ── Reference Sequences ─────────────────────────────────────────────────────
+# EGFR: UniProt P00533  — Download: https://www.uniprot.org/uniprot/P00533.fasta
+# HER2: UniProt P04626  — Download: https://www.uniprot.org/uniprot/P04626.fasta
+# Place in: data/raw/ccle/
+# ─────────────────────────────────────────────────────────────────────────────
+uniprot:
+  EGFR:
+    accession: "P00533"
+    kinase_domain_start: 712
+    kinase_domain_end: 979
+    fasta_file: "egfr_P00533.fasta"
+    signal_peptide_length: 24   # residues 1-24
+  ERBB2:
+    accession: "P04626"
+    kinase_domain_start: 720
+    kinase_domain_end: 987
+    fasta_file: "erbb2_P04626.fasta"
+    signal_peptide_length: 22   # residues 1-22
+
+# ── PTM Data (Step 04) ───────────────────────────────────────────────────────
+# Source: UniProt P00533 — curated PTM annotations (23 phosphosites)
+#   Download JSON:
+#     curl -o data/raw/ptm/uniprot_P00533.json \
+#          "https://rest.uniprot.org/uniprotkb/P00533.json"
+#   Place in: data/raw/ptm/uniprot_P00533.json
+#
+# IMPORTANT — Numbering convention:
+#   All positions use UniProt P00533 PRECURSOR numbering (includes 24-aa
+#   signal peptide).  This matches the mutation nomenclature (T790M, L858R,
+#   C797S) and the kinase domain boundaries (712–979).
+#   Classic literature sites (Y845, Y1068, Y1173) use mature-protein
+#   numbering and are +24 in UniProt precursor coordinates (Y869, Y1092, Y1197).
+# ─────────────────────────────────────────────────────────────────────────────
+ptm:
+  # ── PTM-BDL DIMENSIONALITY (PTM_Biological_Dynamics_Layer.md §3, §7) ──
+  # Phospho dim = 12 sites per gene (HER2 has 10 real + 2 zero-padded).
+  # Glyco  dim = 12 sites per gene (EGFR has 12 real; HER2 has 7 real + 5
+  #             zero-padded). Both share the same dim so the PTM-BDL self-
+  #             attention block sees a uniform (phospho ⊕ glyco) = 24-token
+  #             sequence per sample regardless of which gene the sample is
+  #             paired with.
+  # Modification-type embedding IDs used by step10 (PTM-BDL):
+  #     phospho_Y = 0   phospho_S = 1   phospho_T = 2   glyco_N = 3
+  ptm_dim: 12
+  glyco_dim: 12
+  # ── EGFR phosphorylation sites (UniProt P00533 precursor numbering) ────
+  EGFR:
+    signal_peptide_length: 24
+    phospho_sites:
+      - { position: 869,  residue: "Y869",  amino_acid: "Y", classic_name: "Y845",  function: "SRC family kinase substrate" }
+      - { position: 991,  residue: "S991",  amino_acid: "S", classic_name: "S991",  function: "regulatory" }
+      - { position: 998,  residue: "Y998",  amino_acid: "Y", classic_name: "Y998",  function: "regulatory" }
+      - { position: 1016, residue: "Y1016", amino_acid: "Y", classic_name: "Y992",  function: "PLCγ binding" }
+      - { position: 1039, residue: "S1039", amino_acid: "S", classic_name: "S1039", function: "regulatory (Ser)" }
+      - { position: 1041, residue: "T1041", amino_acid: "T", classic_name: "T1041", function: "regulatory (Thr)" }
+      - { position: 1069, residue: "Y1069", amino_acid: "Y", classic_name: "Y1045", function: "c-Cbl → receptor degradation" }
+      - { position: 1092, residue: "Y1092", amino_acid: "Y", classic_name: "Y1068", function: "GRB2 → RAS-MAPK (primary)" }
+      - { position: 1110, residue: "Y1110", amino_acid: "Y", classic_name: "Y1086", function: "GRB2 → PI3K (secondary)" }
+      - { position: 1125, residue: "Y1125", amino_acid: "Y", classic_name: "Y1101", function: "SHP1 phosphatase" }
+      - { position: 1172, residue: "Y1172", amino_acid: "Y", classic_name: "Y1148", function: "SHC/DOK" }
+      - { position: 1197, residue: "Y1197", amino_acid: "Y", classic_name: "Y1173", function: "SHC1 → PI3K-AKT (survival)" }
+    # ── EGFR N-glycosylation sites (UniProt P00533 precursor numbering) ──
+    # 12 canonical extracellular N-glyco sites used by the PTM-BDL glyco
+    # token branch (proposal §3.1).  Positions are UniProt precursor (signal
+    # peptide 1–24 included).  All 12 are observed at non-zero coverage in
+    # the unified drugptm output:
+    #   sources J/K (MCP 2025/b) cover N128, N175, N196, N352, N361, N413,
+    #                            N444, N528, N568, N603, N623
+    #   source  L (Taniguchi 2024 sEGFR/CHO) covers N56, N128, N175, N196,
+    #                            N352, N361, N413, N444, N528, N568, N603,
+    #                            N623
+    #   source  N (Sethi 2020 OSCC reference) covers N56, N128, N175, N352,
+    #                            N361, N413, N444, N603
+    # Functional annotations are from Zhu 2026 (PMID review), Liu 2017
+    # EGFR-glyco structural review, and the ErbB2 atlas (Taniguchi 2024).
+    glyco_sites:
+      - { position: 56, residue: "N56",  amino_acid: "N", classic_name: "N32",  function: "extracellular domain I (ligand-binding)" }
+      - { position: 128, residue: "N128", amino_acid: "N", classic_name: "N104", function: "extracellular domain II (dimerization arm)" }
+      - { position: 175, residue: "N175", amino_acid: "N", classic_name: "N151", function: "extracellular domain II (dimerization arm)" }
+      - { position: 196, residue: "N196", amino_acid: "N", classic_name: "N172", function: "extracellular domain II" }
+      - { position: 352, residue: "N352", amino_acid: "N", classic_name: "N328", function: "extracellular domain III (ligand-binding)" }
+      - { position: 361, residue: "N361", amino_acid: "N", classic_name: "N337", function: "extracellular domain III — critical for ligand affinity (Zhu 2026)" }
+      - { position: 413, residue: "N413", amino_acid: "N", classic_name: "N389", function: "extracellular domain III" }
+      - { position: 444, residue: "N444", amino_acid: "N", classic_name: "N420", function: "extracellular domain III/IV junction" }
+      - { position: 528, residue: "N528", amino_acid: "N", classic_name: "N504", function: "extracellular domain IV — homolog of HER2 N530" }
+      - { position: 568, residue: "N568", amino_acid: "N", classic_name: "N544", function: "extracellular domain IV (membrane-proximal)" }
+      - { position: 603, residue: "N603", amino_acid: "N", classic_name: "N579", function: "extracellular domain IV (membrane-proximal)" }
+      - { position: 623, residue: "N623", amino_acid: "N", classic_name: "N599", function: "extracellular domain IV (membrane-proximal)" }
+  # ── HER2/ERBB2 phosphorylation sites (UniProt P04626 numbering) ────────
+  # 10 sites + 2 zero-padded to match ptm_dim=12
+  # Homologous sites: Y1221≡Y1068(EGFR), Y1248≡Y1173(EGFR)
+  ERBB2:
+    signal_peptide_length: 22
+    phospho_sites:
+      - { position: 686,  residue: "T686",  amino_acid: "T", classic_name: "T686",  function: "regulatory (Thr, juxtamembrane)", egfr_homolog: "T693" }
+      - { position: 1005, residue: "Y1005", amino_acid: "Y", classic_name: "Y1005", function: "c-Cbl direct binding → degradation", egfr_homolog: null }
+      - { position: 1054, residue: "S1054", amino_acid: "S", classic_name: "S1054", function: "regulatory (Ser)", egfr_homolog: "S1039" }
+      - { position: 1099, residue: "T1099", amino_acid: "T", classic_name: "T1099", function: "regulatory (Thr)", egfr_homolog: null }
+      - { position: 1139, residue: "Y1139", amino_acid: "Y", classic_name: "Y1139", function: "adaptor recruitment", egfr_homolog: "Y1069" }
+      - { position: 1151, residue: "S1151", amino_acid: "S", classic_name: "S1151", function: "regulatory", egfr_homolog: null }
+      - { position: 1196, residue: "Y1196", amino_acid: "Y", classic_name: "Y1196", function: "c-Cbl → receptor downregulation", egfr_homolog: "Y1110" }
+      - { position: 1221, residue: "Y1221", amino_acid: "Y", classic_name: "Y1221", function: "GRB2 → RAS-MAPK (primary)", egfr_homolog: "Y1092" }
+      - { position: 1222, residue: "Y1222", amino_acid: "Y", classic_name: "Y1222", function: "GRB2/SHC dual docking (unique to HER2)", egfr_homolog: null }
+      - { position: 1248, residue: "Y1248", amino_acid: "Y", classic_name: "Y1248", function: "SHC1 → PI3K-AKT (survival)", egfr_homolog: "Y1197" }
+      # Sites 11-12: zero-padded (no biological site) to match ptm_dim=12
+    # ── HER2/ERBB2 N-glycosylation sites (UniProt P04626 numbering) ──────
+    # 7 canonical N-glyco sites (Taniguchi 2024 atlas: PMID 38109791).
+    # Padded to glyco_dim = 12 with 5 zero slots so the glyco token tensor
+    # has the same shape across both genes (proposal §3.2, §7.4).
+    # Homologous sites:  N530 (ERBB2) ↔ N528 (EGFR) — extracellular domain
+    # IV.  These provide the cross-receptor glyco anchor used by step12 /
+    # step13 to validate that the PTM-BDL learns FUNCTION, not protein
+    # identity (proposal §3.3 cross-receptor table).
+    glyco_sites:
+      - { position: 68, residue: "N68",  amino_acid: "N", classic_name: "N46",  function: "extracellular domain I", egfr_homolog: null }
+      - { position: 124, residue: "N124", amino_acid: "N", classic_name: "N102", function: "extracellular domain II (dimerization arm)", egfr_homolog: null }
+      - { position: 187, residue: "N187", amino_acid: "N", classic_name: "N165", function: "extracellular domain II", egfr_homolog: null }
+      - { position: 259, residue: "N259", amino_acid: "N", classic_name: "N237", function: "extracellular domain II/III junction", egfr_homolog: null }
+      - { position: 530, residue: "N530", amino_acid: "N", classic_name: "N508", function: "extracellular domain IV — trastuzumab binding / homolog of EGFR N528", egfr_homolog: "N528" }
+      - { position: 571, residue: "N571", amino_acid: "N", classic_name: "N549", function: "extracellular domain IV (membrane-proximal)", egfr_homolog: null }
+      - { position: 629, residue: "N629", amino_acid: "N", classic_name: "N607", function: "extracellular domain IV (membrane-proximal)", egfr_homolog: null }
+      # Sites 8-12: zero-padded (no biological site) to match glyco_dim=12
+
+# ── Drug-PTM Data Sources (Step 05) ──────────────────────────────────────────
+# Three phosphoproteomic datasets processed by step05 (see script for details):
+#   A) DrugPTM-Bench — Badkul et al., 2026 (PMID 30394195) — dose-response
+#   B) Tozuka et al., 2024 (PMID 38646155) — parental vs resistant
+#   C) Hsu et al., 2025 (PMID 41023502) — temporal dynamics
+# ─────────────────────────────────────────────────────────────────────────────
+drugptm_bench:
+  repo_url: "https://github.com/Xie-lab/DrugPTM-Bench"
+
+tozuka_2024:
+  doi: "https://doi.org/10.1016/j.isci.2024.109657"
+  pmid: 38646155
+  pmc: "PMC11031815"
+  data_file: "mmc2.xlsx"
+
+hsu_2025:
+  doi: "https://doi.org/10.1038/s44320-025-00141-1"
+  pmid: 41023502
+  pmc: "PMC12583488"
+  data_file: "44320_2025_141_MOESM3_ESM.xlsx"
+
+pnas_2025:
+  doi: "https://doi.org/10.1073/pnas.2522090123"
+  title: "Tyrosine phosphoproteome profiling identifies cell-intrinsic signals limiting the efficacy of TKI therapies"
+  data_files:
+    - "pnas.2522090123.sd02.xlsx"   # Dataset S2: processed pY proteomics (TMT intensities)
+    - "pnas.2522090123.sd04.xlsx"   # Dataset S4: statistical analysis of pY data
+  cell_lines: [ "H1975", "HCC4006" ]
+  drug: "Osimertinib"
+
+febs_2025:
+  doi: "https://doi.org/10.1002/1878-0261.70091"
+  title: "Unveiling unique protein and phosphorylation signatures in LUAD"
+  massive_id: "MSV000095018"
+  massive_doi: "https://doi.org/10.25345/C5W37M669"
+  data_files:
+    - "mol270091-sup-0006-tables5.xlsx"   # Table S5: 211 phosphosites with FC + p-values
+    - "mol270091-sup-0007-tables6.xlsx"   # Table S6: kinase-substrate scores
+  sample_groups: [ "EML4-ALK", "EGFR-mutant", "KRAS-mutant", "Wild-type" ]
+
+cancerres_2021:
+  doi: "https://doi.org/10.1158/0008-5472.CAN-20-1814"
+  title: "Alterations in the Global Proteome and Phosphoproteome in 3rd Generation EGFR TKI Resistance"
+  journal: "Cancer Research 81(11):3051, 2021"
+  data_files:
+    - "table_s2_phosphosites.xlsx"
+    - "table_s5_common.xlsx"
+  cell_lines: [ "H1975" ]
+  resistant_clones:
+    osimertinib: [ "AZR3", "AZR4" ]
+    rociletinib: [ "COR1", "COR10" ]
+  quantification: "SILAC (L=parental, M=resistant_clone1, H=resistant_clone2)"
+
+mcp_2025:
+  doi: "https://doi.org/10.1016/j.mcpro.2025.100917"
+  title: "Fe-ZIC-cHILIC for simultaneous glycoproteomics and phosphoproteomics in TKI-resistant NSCLC"
+  journal: "Molecular and Cellular Proteomics (2025)"
+  data_files:
+    - "table_s8_phospho_glyco_summary.xlsx"
+  cell_lines: [ "H1975", "H3255", "PC-9" ]
+  cell_line_mutations:
+    H3255: "L858R"
+    PC-9: "exon19del"
+    H1975: "L858R_T790M"
+  quantification: "Label-free DIA-MS"
+
+# ── Mutation-Class Phospho Propagation (Step 06, Section 8d) ──────────────
+# Biologically justified propagation of phospho features from measured cell
+# lines to unmeasured cell lines sharing the same EGFR mutation class.
+# This dramatically increases phospho coverage from ~16 to ~600+ samples.
+# ─────────────────────────────────────────────────────────────────────────────
+phospho_propagation:
+  enabled: true
+  attenuation_factor: 0.85   # Applied to log2FC values during propagation
+  biological_references:
+    - pmid: 18691549
+      citation: "Yun et al., Cancer Cell 2008"
+      finding: "L858R and exon19del stabilize αC-helix → equivalent autophosphorylation"
+    - pmid: 17585332
+      citation: "Sharma et al., Nat Rev Cancer 2007"
+      finding: "Activating EGFR mutations produce convergent phospho-signaling"
+    - pmid: 23940396
+      citation: "Red Brewer et al., PNAS 2013"
+      finding: "All activating mutations converge on same active conformation"
+    - pmid: 15118125
+      citation: "Sordella et al., Science 2004"
+      finding: "exon19del and L858R both activate PI3K/AKT and STAT pathways"
+    - pmid: 15713906
+      citation: "Kobayashi et al., NEJM 2005"
+      finding: "T790M preserves phosphorylation but blocks drug binding"
+  internal_validation:
+    - "Tozuka 2024: PC-9 and HCC827 (both exon19del) show concordant phospho (r>0.85)"
+    - "PNAS 2025: H1975 vs HCC4006 show mutation-class-dependent phospho magnitudes"
+  confidence_scores:
+    # EGFR confidence scores
+    measured: 1.00
+    cross_drug_propagated: 0.90
+    exon19del_propagated: 0.80
+    L858R_propagated: 0.65
+    L858R_T790M_propagated: 0.75
+    wild_type_inferred: 0.40
+    # HER2/ERBB2 confidence scores — added for ERBB family expansion
+    HER2_amplified_measured: 1.00        # BT-474 direct measurements
+    HER2_amplified_propagated: 0.70      # Propagated from BT-474 to other HER2-amp lines
+    HER2_wild_type_inferred: 0.40        # HER2 WT prior (analogous to EGFR WT)
+
+# ── PTM Modulators — Per-Cell-Line Biological Context (added 2026-06-28) ────
+# Multiplicative modulators on the mutation-class PTM baseline vectors, driven
+# by per-cell-line co-mutation status and tissue lineage.  Each magnitude is
+# tied to a published mechanism (PMID).  This block fixes the failure mode
+# documented in results/COMPREHENSIVE_EVALUATION_28_june.md §1.1 (randomized
+# PTM control + mutation-group collapse), in which all ~951 samples share only
+# ~5 unique PTM vectors because mapping was mutation-class only.
+#
+# CONVENTION:
+#   multiplier  = 1.0 + Δ        (additive convention; e.g. +0.30 = ×1.30)
+#   For HER2 amplification we use direct multipliers (high=1.5, etc.)
+#
+# Site naming:
+#   EGFR sites use UniProt P00533 precursor numbering.  Classic literature
+#   names (Y845/Y1068/Y1086/Y1173) map to (Y869/Y1092/Y1110/Y1197) precursor.
+#   ERBB2 sites use UniProt P04626 numbering.
+#
+# CAVEAT (user-flagged 2026-06-28):
+#   HER2-amp magnitudes (×1.0/×1.2/×1.5) are a first-pass.  Krug et al.
+#   Cell 2020 (CPTAC breast cohort) shows ERBB2 phospho-peptide log2 intensity
+#   scales near-linearly with copy number up to ~6 copies with mild saturation
+#   above.  Citri & Yarden NRMCB 2006 (PMID 16829981) confirms phospho output
+#   ∝ surface receptor stoichiometry up to maximal dimerization.  If the
+#   randomized control still fails after this run, reduce to
+#   ×1.0/×1.15/×1.30 (saturating gradient).
+# ─────────────────────────────────────────────────────────────────────────────
+ptm_modulators:
+  enabled: true
+
+  # ── EGFR baseline modulators (multiplicative deltas on baseline PTM vector) ──
+  EGFR:
+    # KRAS activating (G12/G13/Q61): constitutive RAS-MAPK → SHP2/PTPN11
+    # dephosphatase suppression and SOS1 feedback. 1.3-1.5x pY1068 in
+    # KRAS-mut LUAD by phospho-MS.
+    # Sun et al., Sci Signal 2014 (PMID 24595108)
+    # Coelho et al., Cell 2017 (PMID 28238573)
+    kras_activating: 0.30          # applied to Y1092 (Y1068), Y1110 (Y1086)
+
+    # MET amplification: MET-EGFR transactivation hyperphosphorylates
+    # Y845 via SRC and Y1086 via GAB1; log2FC +1.5 at Y845 in HCC827-GR.
+    # Engelman et al., Science 2007 (PMID 17463250)
+    # Bean et al., PNAS 2007 (PMID 17804805)
+    met_amp_Y869: 0.80             # Y845 in classic numbering
+    met_amp_Y1110: 0.50            # Y1086 in classic numbering
+
+    # PIK3CA activating (E542K, E545K, H1047R): PI3K-AKT feedback
+    # reinforces SHC1 docking; 1.2-1.3x pY1173 in PIK3CA-mut.
+    # Engelman, NRC 2009 (PMID 19629070)
+    # Saal et al., Cancer Res 2007 (PMID 17575141)
+    pik3ca_Y1197: 0.25             # Y1173 in classic numbering
+
+    # TP53 LoF: impaired Cbl-mediated degradation (lower pY1045 occupancy)
+    # + slower endocytic clearance (higher pY998 retention).
+    # Sigismund et al., Physiol Rev 2018 (PMID 28954795)
+    # Tomas et al., Trends Cell Biol 2014 (PMID 24210710)
+    tp53_lof_Y998: 0.20
+    tp53_lof_Y1069: -0.30          # Y1045 in classic numbering
+
+    # PTEN loss: unopposed PI3K signaling sustains SHC-PI3K-AKT axis.
+    # Carracedo & Pandolfi, Oncogene 2008 (PMID 18931626)
+    pten_loss_Y1197: 0.30
+
+    # ── Tissue-of-origin modulators (from CCLE OncotreeLineage) ────────
+    # Lung (LUAD/LUSC) — reference (no modulation)
+    # Breast — higher ERBB-family co-expression → heterodimer-driven
+    #   phospho. Yarden & Sliwkowski, NRMCB 2001 (PMID 11252954)
+    tissue_breast_Y1092_Y1197: 0.15
+    # Skin/HNSCC squamous — higher baseline SRC activity.
+    # Frame, J Cell Sci 2002 (PMID 12082147)
+    tissue_squamous_Y869: 0.10
+
+  # ── ERBB2/HER2 baseline modulators ────────────────────────────────────────
+  ERBB2:
+    # HER2 amplification → all tyrosine auto-phospho sites
+    # Direct multipliers (not additive).  Magnitudes are FIRST-PASS — see
+    # caveat above and Krug et al. Cell 2020 / CPTAC breast.
+    # Hudis, NEJM 2007 (PMID 17626692)
+    # Citri & Yarden, NRMCB 2006 (PMID 16829981)
+    her2_amp_multiplier:
+      baseline: 1.0
+      intermediate: 1.2
+      high: 1.5
+
+    # PIK3CA activating → Y1248 (same mechanism as EGFR Y1173)
+    # Engelman, NRC 2009 (PMID 19629070)
+    pik3ca_Y1248: 0.25
+
+    # PTEN loss → Y1248 (Carracedo 2008)
+    pten_Y1248: 0.30
+
+    # ER+ luminal subtype → Y1005 (Cbl site) decreases — higher receptor
+    # stability in luminal subtype.
+    # Arteaga & Engelman, Cancer Cell 2014 (PMID 24651011)
+    er_plus_Y1005: -0.20
+
+  # ── Curated HER2-amplification cell-line lists ────────────────────────────
+  # CCLE OmicsCNGene.csv is not part of the manual download set.  These
+  # tiers are curated from the Broad Cell Line Encyclopedia + literature.
+  # "high": copy number >= 6 (clinical HER2-amplified equivalent)
+  # "intermediate": copy number 3-5
+  # all others → baseline.
+  # References:
+  #   Subik et al., Breast Cancer (Auckl) 2010 (PMID 20697531)
+  #   Neve et al., Cancer Cell 2006 (PMID 17157791)
+  her2_amp_tiers:
+    high:
+      - "BT-474"
+      - "BT474"
+      - "SK-BR-3"
+      - "SKBR3"
+      - "HCC1954"
+      - "HCC2218"
+      - "HCC2185"
+      - "AU565"
+      - "MDA-MB-453"
+      - "MDAMB453"
+      - "ZR-75-30"
+      - "ZR7530"
+      - "UACC-893"
+      - "UACC893"
+      - "EFM-192A"
+      - "EFM192A"
+      - "EFM-19"
+      - "EFM19"
+      - "HCC1419"
+      - "HCC1569"
+      - "JIMT-1"
+      - "JIMT1"
+      - "SUM-225"
+      - "SUM225"
+      - "KPL-4"
+      - "KPL4"
+      - "OCUB-1"
+      - "OCUBM"
+      - "UACC-732"
+      - "UACC732"
+    intermediate:
+      - "HCC202"
+      - "MDA-MB-361"
+      - "MDAMB361"
+      - "HCC1428"
+      - "HCC1500"
+
+  # ── Curated MET-amplified EGFR-context cell lines ─────────────────────────
+  # Engelman et al. Science 2007 (PMID 17463250)
+  # Bean et al., PNAS 2007 (PMID 17804805)
+  met_amplified_lines:
+    - "HCC827GR"
+    - "HCC827-GR"
+    - "EBC-1"
+    - "EBC1"
+    - "H1993"
+    - "NCI-H1993"
+    - "MKN45"
+    - "MKN-45"
+    - "SNU-5"
+    - "SNU5"
+    - "GTL-16"
+    - "GTL16"
+
+
+# ── Acquired Resistance Mutations (not in CCLE) ──────────────────────────────
+# These mutations emerge DURING Osimertinib treatment in patients and are
+# central to the project's thesis, but no established CCLE cell line carries
+# them.  We define them here so step02 can generate the mutant sequences
+# for ESM-2 embedding alongside the CCLE-derived mutations.
+#
+# Format: name → list of {pos, ref, alt} for point mutations,
+#         or {start, end} for deletions, applied to UniProt P00533.
+# ─────────────────────────────────────────────────────────────────────────────
+acquired_resistance_mutations:
+  - name: "C797S"
+    description: "Cys797→Ser — blocks Osimertinib covalent binding"
+    reference: "Thress et al., Nature Medicine 2015 (PMID: 26552849)"
+    pdb_validation: "6LUD contains C797S in the triple mutant context"
+    changes:
+      - { type: point, pos: 797, ref: C, alt: S }
+
+  - name: "L858R_T790M_C797S"
+    description: "Triple mutant — full Osimertinib resistance"
+    reference: "Thress et al., Nature Medicine 2015; PDB 6LUD (Cho et al., J Med Chem 2020)"
+    pdb_validation: "6LUD — crystal structure of this exact triple mutant"
+    changes:
+      - { type: point, pos: 858, ref: L, alt: R }
+      - { type: point, pos: 790, ref: T, alt: M }
+      - { type: point, pos: 797, ref: C, alt: S }
+
+  - name: "exon19del_E746_A750_T790M"
+    description: "Exon 19 deletion (ELREA) + acquired T790M gatekeeper"
+    reference: "Yu et al., Clin Cancer Res 2015 (PMID: 25870057)"
+    pdb_validation: "Deletion verified at positions 746-750 in UniProt P00533"
+    changes:
+      - { type: deletion, start: 746, end: 750 }
+      - { type: point, pos: 790, ref: T, alt: M }
+
+# ── Drug SMILES (Chemical Structures) ────────────────────────────────────────
+# SMILES strings for ChemBERTa encoding. No download needed — hardcoded here.
+# ─────────────────────────────────────────────────────────────────────────────
+drugs:
+  osimertinib:
+    name: "Osimertinib"
+    smiles: "C=CC(=O)Nc1cc(OC)c(Nc2nccc(-c3cn(C)c4ccccc34)n2)cc1N(C)CCN(C)C"
+    generation: "3rd"
+    binding_type: "covalent (C797)"
+    notes: "Targets T790M; acrylamide warhead binds C797 covalently"
+  gefitinib:
+    name: "Gefitinib"
+    smiles: "COc1cc2ncnc(Nc3ccc(F)c(Cl)c3)c2cc1OCCCN1CCOCC1"
+    generation: "1st"
+    binding_type: "reversible"
+    notes: "First-generation reversible ATP-competitive EGFR TKI"
+  afatinib:
+    name: "Afatinib"
+    smiles: "CN(C)C/C=C/C(=O)Nc1cc2c(Nc3ccc(F)c(Cl)c3)ncnc2cc1OC1CCOC1"
+    generation: "2nd"
+    binding_type: "covalent (C797)"
+    notes: "Pan-ErbB irreversible inhibitor; targets C797 but less selective"
+  erlotinib:
+    name: "Erlotinib"
+    smiles: "C(#Cc1cccc(c1)C)COc1cc2c(cc1OCCOC)ncnc2Nc1ccccc1"
+    generation: "1st"
+    binding_type: "reversible"
+    notes: "First-generation reversible EGFR TKI"
+  # ── HER2/pan-ERBB drugs — added for ERBB family expansion ──────────────
+  lapatinib:
+    name: "Lapatinib"
+    smiles: "CS(=O)(=O)CCNCc1ccc(-c2ccc3ncnc(Nc4ccc(OCc5cccc(F)c5)c(Cl)c4)c3c2)o1"
+    generation: "1st"
+    binding_type: "reversible (dual EGFR/HER2)"
+    target_proteins: [ "EGFR", "ERBB2" ]
+    notes: "Dual EGFR/HER2 reversible TKI; approved for HER2+ breast cancer"
+    reference: "PubChem CID 208908"
+  sapitinib:
+    name: "Sapitinib"
+    smiles: "COc1cc2ncnc(Nc3ccc(F)c(Cl)c3)c2cc1NC(=O)/C=C/CN1CCOCC1"
+    generation: "2nd"
+    binding_type: "reversible (pan-ERBB)"
+    target_proteins: [ "EGFR", "ERBB2", "ERBB3" ]
+    notes: "Pan-ERBB reversible TKI (AZD8931); targets EGFR+ERBB2+ERBB3"
+    reference: "PubChem CID 11476171; Hickinson et al., Clin Cancer Res 2010"
+  # NOTE: Neratinib SMILES kept for reference but drug NOT in GDSC2 Oct 2023:
+  # neratinib: "CCOc1cc2ncc(C#N)c(Nc3ccc(OCc4ccccn4)c(Cl)c3)c2cc1NC(=O)/C=C/CN(C)C"
+
+
+# NOTE: Framework-level settings (model, ptm_bdl, training) are in config/config.yaml

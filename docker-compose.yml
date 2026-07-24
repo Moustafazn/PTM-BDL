@@ -1,14 +1,18 @@
 # ============================================================================
-# docker-compose.yml — PTM-Driven Multimodal Self-Attention
+# docker-compose.yml — PTM-BDL Framework
 # ============================================================================
-# One-command reproducible execution for Nature Methods reviewers.
+# Reproducible execution for reviewers. Supports all 3 case studies.
 #
 # Usage:
-#   docker compose up              — Run full pipeline (data → train → benchmark → figures)
-#   docker compose up train        — Train only
-#   docker compose up benchmark    — Benchmarking only
-#   docker compose up figures      — Publication figures & tables only
-#   docker compose run shell       — Interactive bash shell
+#   docker compose up                     — Run ALL case studies
+#   docker compose up egfr                — EGFR/ERBB2 TKI case study only
+#   docker compose up hela                — HeLa/HDAC inhibitor case study only
+#   docker compose up k562                — K562/CML BCR-ABL case study only
+#   docker compose run shell              — Interactive shell
+#
+# Per-phase (any case study):
+#   docker compose run --rm pipeline make data CASE=hela
+#   docker compose run --rm pipeline make train CASE=k562
 #
 # GPU support:
 #   docker compose --profile gpu up
@@ -16,7 +20,7 @@
 
 services:
 
-  # ── Full Pipeline (default) ────────────────────────────────────────────────
+  # ── Full Pipeline (all case studies) ────────────────────────────────────────
   pipeline:
     build: .
     image: ptm-bdl:latest
@@ -28,7 +32,44 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
 
-  # ── Individual Phases ──────────────────────────────────────────────────────
+  # ── Individual Case Studies ─────────────────────────────────────────────────
+  egfr:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-egfr
+    command: make egfr
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [ egfr ]
+
+  hela:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-hela
+    command: make hela
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [ hela ]
+
+  k562:
+    build: .
+    image: ptm-bdl:latest
+    container_name: ptm-bdl-k562
+    command: make k562
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles: [ k562 ]
+
+  # ── Individual Phases ───────────────────────────────────────────────────────
 
   data:
     build: .
@@ -39,29 +80,7 @@ services:
       - ./data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
-    profiles: [data]
-
-  harmonize:
-    build: .
-    image: ptm-bdl:latest
-    container_name: ptm-bdl-harmonize
-    command: make harmonize
-    volumes:
-      - ./data:/app/data
-    environment:
-      - PYTHONUNBUFFERED=1
-    profiles: [harmonize]
-
-  features:
-    build: .
-    image: ptm-bdl:latest
-    container_name: ptm-bdl-features
-    command: make features
-    volumes:
-      - ./data:/app/data
-    environment:
-      - PYTHONUNBUFFERED=1
-    profiles: [features]
+    profiles: [ data ]
 
   train:
     build: .
@@ -73,7 +92,7 @@ services:
       - ./results:/app/results
     environment:
       - PYTHONUNBUFFERED=1
-    profiles: [train]
+    profiles: [ train ]
 
   evaluate:
     build: .
@@ -85,7 +104,7 @@ services:
       - ./results:/app/results
     environment:
       - PYTHONUNBUFFERED=1
-    profiles: [evaluate]
+    profiles: [ evaluate ]
 
   benchmark:
     build: .
@@ -97,7 +116,7 @@ services:
       - ./results:/app/results
     environment:
       - PYTHONUNBUFFERED=1
-    profiles: [benchmark]
+    profiles: [ benchmark ]
 
   figures:
     build: .
@@ -109,7 +128,7 @@ services:
       - ./results:/app/results
     environment:
       - PYTHONUNBUFFERED=1
-    profiles: [figures]
+    profiles: [ figures ]
 
   test:
     build: .
@@ -121,9 +140,9 @@ services:
       - ./results:/app/results
     environment:
       - PYTHONUNBUFFERED=1
-    profiles: [test]
+    profiles: [ test ]
 
-  # ── Interactive Shell ──────────────────────────────────────────────────────
+  # ── Interactive Shell ───────────────────────────────────────────────────────
   shell:
     build: .
     image: ptm-bdl:latest
@@ -136,9 +155,9 @@ services:
       - ./results:/app/results
     environment:
       - PYTHONUNBUFFERED=1
-    profiles: [shell]
+    profiles: [ shell ]
 
-  # ── GPU Pipeline (NVIDIA) ──────────────────────────────────────────────────
+  # ── GPU Pipeline (NVIDIA) ───────────────────────────────────────────────────
   pipeline-gpu:
     build:
       context: .
@@ -158,5 +177,5 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
-    profiles: [gpu]
+              capabilities: [ gpu ]
+    profiles: [ gpu ]

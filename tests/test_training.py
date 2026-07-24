@@ -5,32 +5,22 @@ Covers: FocalLoss, compute_metrics, build_model_from_cfg,
 config loading, and one-step training sanity check.
 """
 
-import importlib
 import sys
 from pathlib import Path
 
 import pytest
 import torch
 import torch.nn.functional as F
-import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 
-# Import step11_train from scripts/ via importlib (not a package, so PyCharm
-# cannot resolve bare `import step11_train`).
-_step11_spec = importlib.util.spec_from_file_location(
-    "step11_train", PROJECT_ROOT / "scripts" / "step11_train.py")
-_step11_mod = importlib.util.module_from_spec(_step11_spec)
-_step11_spec.loader.exec_module(_step11_mod)
-
-# Re-export the symbols we need so PyCharm can resolve them
-FocalLoss = _step11_mod.FocalLoss
-compute_metrics_fn = _step11_mod.compute_metrics
-build_model_from_cfg_fn = _step11_mod.build_model_from_cfg
-
-from src.models.multimodal_predictor import PTMBDLEncoder, PTMBDLMlpAblation
+from src.ptm_bdl.config import load_config
+from src.ptm_bdl.training.loss import FocalLoss
+from src.ptm_bdl.training.metrics import compute_metrics as compute_metrics_fn
+from src.ptm_bdl.training.factory import build_model_from_cfg as build_model_from_cfg_fn
+from src.ptm_bdl.model.encoder import PTMBDLEncoder
+from src.ptm_bdl.model.ablation import PTMBDLMlpAblation
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -42,8 +32,7 @@ class TestConfig:
     @staticmethod
     @pytest.fixture
     def cfg():
-        with open(PROJECT_ROOT / "config" / "config.yaml") as f:
-            return yaml.safe_load(f)
+        return load_config(case_study="egfr_erbb2_tki")
 
     @staticmethod
     def test_config_loads(cfg):
@@ -138,7 +127,7 @@ class TestFocalLoss:
     def test_class_conditional_alpha(focal):
         """Minority class (label=0) should get higher weight (1-alpha=0.75)."""
         logits = torch.zeros(2, 1)  # neutral
-        loss_pos = focal(logits, torch.ones(2, 1))   # majority (alpha=0.25)
+        loss_pos = focal(logits, torch.ones(2, 1))  # majority (alpha=0.25)
         loss_neg = focal(logits, torch.zeros(2, 1))  # minority (1-alpha=0.75)
         assert loss_neg.item() > loss_pos.item(), \
             "Minority class should have higher loss weight"
@@ -214,8 +203,7 @@ class TestBuildModel:
     @staticmethod
     @pytest.fixture
     def cfg():
-        with open(PROJECT_ROOT / "config" / "config.yaml") as f:
-            return yaml.safe_load(f)
+        return load_config(case_study="egfr_erbb2_tki")
 
     @staticmethod
     def test_builds_with_typed_attention(cfg):
@@ -260,8 +248,8 @@ class TestTrainingSanity:
             drug_embeddings=batch["drug_emb"],
             ptm_vector=batch["ptm_vector"],
             delta_ptm_vector=batch["delta_ptm_vector"],
-            glyco_vector=batch["glyco_vector"],
-            delta_glyco_vector=batch["delta_glyco_vector"],
+            secondary_vector=batch["secondary_vector"],
+            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
 
@@ -288,8 +276,8 @@ class TestTrainingSanity:
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                glyco_vector=batch["glyco_vector"],
-                delta_glyco_vector=batch["delta_glyco_vector"],
+                secondary_vector=batch["secondary_vector"],
+                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
             )
             loss = ((ic50 - batch["ln_ic50"]) ** 2).mean()

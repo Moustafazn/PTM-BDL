@@ -41,7 +41,8 @@ WORKDIR /app
 
 # ── Python Dependencies (cached layer — rebuild only when deps change) ───────
 COPY requirements-lock.txt .
-RUN pip install --no-cache-dir -r requirements-lock.txt
+RUN pip install --no-cache-dir -r requirements-lock.txt && \
+    pip install --no-cache-dir torch-geometric -f https://data.pyg.org/whl/torch-2.12.0+cpu.html
 
 # ── Project Source ───────────────────────────────────────────────────────────
 COPY pyproject.toml .
@@ -49,9 +50,8 @@ COPY README.md .
 COPY LICENSE .
 COPY CITATION.cff .
 COPY Makefile .
-COPY config/ config/
 COPY src/ src/
-COPY scripts/ scripts/
+
 COPY tests/ tests/
 COPY docs/ docs/
 
