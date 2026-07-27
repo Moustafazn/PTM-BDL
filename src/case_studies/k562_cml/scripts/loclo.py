@@ -31,6 +31,16 @@
 ║    Ref: O'Hare et al., Blood 2005 — TKI potency ranking                   ║
 ║    Ref: Hochhaus et al., Leukemia 2020 — ELN CML management               ║
 ║                                                                              ║
+║  SCALABILITY:                                                                ║
+║    K562/CML pan-cancer dataset (~10K samples) is ~11× larger than EGFR     ║
+║    (~1K). LOCLO uses an epoch-length cap to keep folds tractable:          ║
+║      • WeightedRandomSampler num_samples capped at 4000 per epoch         ║
+║        (no data discarded — sampler draws from full training pool)          ║
+║      • Batch size 64 (fewer iterations per epoch)                           ║
+║      • 30 epochs max (30 × 4000 = 120K draws from full 10K+ pool)         ║
+║    This reduces wall-clock from ~12h/fold → ~20-40 min/fold on MPS         ║
+║    without discarding any training data.                                    ║
+║                                                                              ║
 ║  INPUT:                                                                      ║
 ║    data/processed/k562_cml/multimodal_dataset.csv (from step06)            ║
 ║                                                                              ║
@@ -60,6 +70,22 @@ RESULTS_DIR = PROJECT_ROOT / cfg["paths"]["results"] / CASE_STUDY
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 SEED = cfg["training"]["seed"]
+
+# ── LOCLO-specific training parameters for large datasets ───────────────
+# K562 pan-cancer dataset (~10K samples) is ~11× larger than EGFR (~1K).
+# Without caps, a single LOCLO fold runs ~284 batches/epoch × 60 epochs
+# = 17,000+ iterations → 12+ hours per fold on MPS.
+#
+# Solution: cap the WeightedRandomSampler's num_samples to limit epoch
+# length. NO DATA IS DISCARDED — the sampler draws from the FULL training
+# pool (with replacement), but each epoch only processes ~4000 draws.
+# Over 30 epochs, that's 120,000 draws from the full 10K+ pool — every
+# sample is seen ~12× on average. This is standard practice for large-
+# dataset CV (Baptista et al., Brief Bioinform 2021).
+LOCLO_EPOCH_SAMPLES = 4000      # Sampler draws per epoch (not a data filter)
+LOCLO_MAX_EPOCHS = 30           # 30 × 4000 = 120K total draws
+LOCLO_BATCH_SIZE = 64           # Larger batches → fewer iterations per epoch
+LOCLO_PATIENCE = 10             # Early stopping patience
 
 
 def assign_tissue_groups(df: pd.DataFrame) -> np.ndarray:
@@ -104,16 +130,30 @@ def train_loclo_fold(dataset, train_idx, test_idx, fold_name, cfg, device):
         if not np.isnan(lbl):
             sample_weights[i] = class_weights[int(lbl)]
 
-    sampler = WeightedRandomSampler(
-        weights=sample_weights, num_samples=len(train_idx), replacement=True)
+    # Cap epoch length for large training sets — sampler still draws from
+    # ALL training samples, but each epoch only processes `epoch_samples`
+    # draws. This keeps the data distribution intact while reducing wall
+    # clock time per epoch.
+    epoch_samples = min(len(train_idx), LOCLO_EPOCH_SAMPLES)
 
-    batch_size = cfg["model"]["batch_size"]
+    sampler = WeightedRandomSampler(
+        weights=sample_weights, num_samples=epoch_samples, replacement=True)
+
     train_loader = DataLoader(
-        train_subset, batch_size=batch_size, sampler=sampler,
+        train_subset, batch_size=LOCLO_BATCH_SIZE, sampler=sampler,
         collate_fn=collate_fn, num_workers=0)
     test_loader = DataLoader(
-        test_subset, batch_size=batch_size, shuffle=False,
+        test_subset, batch_size=LOCLO_BATCH_SIZE, shuffle=False,
         collate_fn=collate_fn, num_workers=0)
+
+    n_batches = len(train_loader)
+    if len(train_idx) > LOCLO_EPOCH_SAMPLES:
+        print(f"    Epoch-length cap: {len(train_idx)} train samples → "
+              f"{epoch_samples} draws/epoch ({n_batches} batches)")
+        print(f"    Total exposure: {LOCLO_MAX_EPOCHS} epochs × {epoch_samples} = "
+              f"{LOCLO_MAX_EPOCHS * epoch_samples:,} draws from full pool")
+    print(f"    Config: {LOCLO_MAX_EPOCHS} epochs, batch_size={LOCLO_BATCH_SIZE}, "
+          f"{n_batches} batches/epoch, patience={LOCLO_PATIENCE}")
 
     # Build fresh model
     torch.manual_seed(SEED)
@@ -125,28 +165,45 @@ def train_loclo_fold(dataset, train_idx, test_idx, fold_name, cfg, device):
         weight_decay=cfg["model"]["weight_decay"])
     focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
 
-    num_epochs = min(cfg["model"]["num_epochs"], 60)
-    patience = cfg["model"]["early_stopping_patience"]
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=num_epochs,
+        optimizer, T_max=LOCLO_MAX_EPOCHS,
         eta_min=cfg["model"]["learning_rate"] * 0.01)
     best_score = -1
     patience_counter = 0
     best_state = None
 
-    for epoch in range(num_epochs):
+    fold_start = time.time()
+    for epoch in range(LOCLO_MAX_EPOCHS):
+        epoch_start = time.time()
         train_epoch(model, train_loader, optimizer, scheduler, focal_loss,
                     1.0, 2.0, device)
         val = validate(model, test_loader, focal_loss, 1.0, 2.0, device)
+        epoch_time = time.time() - epoch_start
+
         score = max(val.get("auroc", 0), val.get("balanced_acc", 0))
-        if score > best_score:
+        improved = score > best_score
+
+        if improved:
             best_score = score
             patience_counter = 0
             best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
         else:
             patience_counter += 1
-            if patience_counter >= patience:
-                break
+
+        # Progress logging every 5 epochs or on first epoch
+        if (epoch + 1) % 5 == 0 or epoch == 0:
+            elapsed = time.time() - fold_start
+            eta = (elapsed / (epoch + 1)) * (LOCLO_MAX_EPOCHS - epoch - 1)
+            marker = "★" if improved else " "
+            print(f"    {marker} Epoch {epoch + 1:2d}/{LOCLO_MAX_EPOCHS} | "
+                  f"AUROC={val.get('auroc', 0):.3f} | "
+                  f"BAcc={val.get('balanced_acc', 0):.3f} | "
+                  f"{epoch_time:.1f}s/ep | ETA {eta / 60:.0f}m")
+
+        if patience_counter >= LOCLO_PATIENCE:
+            print(f"    Early stopping at epoch {epoch + 1} "
+                  f"(no improvement for {LOCLO_PATIENCE} epochs)")
+            break
 
     if best_state:
         model.load_state_dict(best_state)
@@ -190,10 +247,18 @@ def main():
     df = dataset.df
     print(f"  Dataset: {len(dataset)} samples")
 
+    # Show LOCLO training parameters
+    print(f"\n  LOCLO training parameters (scaled for {len(dataset)}-sample dataset):")
+    print(f"    Epoch draws (from full pool): {LOCLO_EPOCH_SAMPLES}")
+    print(f"    Max epochs/fold:              {LOCLO_MAX_EPOCHS}")
+    print(f"    Batch size:                   {LOCLO_BATCH_SIZE}")
+    print(f"    Early stopping patience:      {LOCLO_PATIENCE} epochs")
+    print(f"    Total draws per fold:         {LOCLO_MAX_EPOCHS * LOCLO_EPOCH_SAMPLES:,}")
+
     # Assign tissue groups
     groups = assign_tissue_groups(df)
     unique_groups = sorted(set(groups))
-    print(f"  Tissue/subtype groups ({len(unique_groups)}):")
+    print(f"\n  Tissue/subtype groups ({len(unique_groups)}):")
     for g in unique_groups:
         n = (groups == g).sum()
         print(f"    {g:<20s}: {n:4d} samples")
@@ -209,10 +274,11 @@ def main():
     # LOCLO cross-validation
     results = {}
     all_metrics = []
+    total_start = time.time()
 
-    for group in valid_groups:
+    for fold_i, group in enumerate(valid_groups):
         print(f"\n  {'=' * 60}")
-        print(f"  LOCLO Fold: Hold out '{group}'")
+        print(f"  LOCLO Fold {fold_i + 1}/{len(valid_groups)}: Hold out '{group}'")
         print(f"  {'=' * 60}")
 
         test_mask = groups == group
@@ -244,7 +310,15 @@ def main():
             bacc = metrics.get("balanced_acc", "N/A")
             auroc_s = f"{auroc:.3f}" if isinstance(auroc, float) else auroc
             bacc_s = f"{bacc:.3f}" if isinstance(bacc, float) else bacc
-            print(f"    Results: AUROC={auroc_s}, BAcc={bacc_s} ({elapsed:.0f}s)")
+            total_elapsed = (time.time() - total_start) / 60
+            remaining = len(valid_groups) - fold_i - 1
+            print(f"    ✓ Results: AUROC={auroc_s}, BAcc={bacc_s} "
+                  f"({elapsed / 60:.1f} min)")
+            if remaining > 0:
+                avg_fold_time = total_elapsed / (fold_i + 1)
+                print(f"    Progress: {fold_i + 1}/{len(valid_groups)} folds done | "
+                      f"{total_elapsed:.0f} min elapsed | "
+                      f"~{avg_fold_time * remaining:.0f} min remaining")
 
         except Exception as e:
             elapsed = time.time() - t0
@@ -252,8 +326,9 @@ def main():
             results[group] = {"status": "failed", "error": str(e)}
 
     # ── Summary ───────────────────────────────────────────────────────────
+    total_time = (time.time() - total_start) / 60
     print(f"\n  {'=' * 60}")
-    print(f"  LOCLO SUMMARY")
+    print(f"  LOCLO SUMMARY (completed in {total_time:.1f} min)")
     print(f"  {'=' * 60}")
 
     auroc_vals = [m.get("auroc") for m in all_metrics
@@ -265,6 +340,15 @@ def main():
         "n_groups_total": len(unique_groups),
         "n_groups_evaluated": len(valid_groups),
         "n_groups_skipped": len(skipped),
+        "total_time_minutes": round(total_time, 1),
+        "training_parameters": {
+            "epoch_samples_from_full_pool": LOCLO_EPOCH_SAMPLES,
+            "max_epochs": LOCLO_MAX_EPOCHS,
+            "batch_size": LOCLO_BATCH_SIZE,
+            "early_stopping_patience": LOCLO_PATIENCE,
+            "total_draws_per_fold": LOCLO_MAX_EPOCHS * LOCLO_EPOCH_SAMPLES,
+            "note": "No data discarded — sampler draws from full training pool",
+        },
     }
 
     if auroc_vals:
