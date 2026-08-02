@@ -42,6 +42,7 @@
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
+import gc
 import json
 import time
 from pathlib import Path
@@ -188,6 +189,18 @@ ABLATION_CONFIGS = {
         description="All PTM features (phospho) zeroed — static baseline.",
         color="#d62728", use_typed_attention=True, data_mode="no_ptm",
     ),
+    "baseline_only": dict(
+        label="Model A1: Baseline PTM only",
+        description="PTM levels (baseline state) active, all drug-induced deltas zeroed. "
+                    "Tests prospective DRP scenario (no drug-PTM interaction data).",
+        color="#bcbd22", use_typed_attention=True, data_mode="baseline_only",
+    ),
+    "delta_only": dict(
+        label="Model A2: Delta PTM only",
+        description="PTM levels set to WT (1.0), drug-induced deltas active. "
+                    "Isolates purely dynamic pharmacodynamic signal.",
+        color="#17becf", use_typed_attention=True, data_mode="delta_only",
+    ),
     "no_drug": dict(
         label="Model B: No Drug",
         description="Drug embeddings (ChemBERTa) zeroed.",
@@ -210,8 +223,17 @@ ABLATION_CONFIGS = {
     ),
 }
 
+ABLATION_CONFIGS["measured_only"] = dict(
+    label="Model M: Measured PTM only",
+    description="PTM values kept only for directly measured samples (conf≥0.90). "
+                "Propagated samples reset to WT baseline. Tests Q7: contribution "
+                "of mutation-class propagation priors vs direct measurements.",
+    color="#aec7e8", use_typed_attention=True, data_mode="measured_only",
+)
+
 ABLATION_ORDER = [
-    "no_ptm", "no_drug", "no_structure", "no_typed_attention", "full",
+    "no_ptm", "baseline_only", "delta_only", "measured_only",
+    "no_drug", "no_structure", "no_typed_attention", "full",
 ]
 
 

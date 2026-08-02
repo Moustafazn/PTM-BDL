@@ -36,6 +36,9 @@ certifi
 # ── Benchmarking / ML Baselines ──
 xgboost>=2.0
 
+# ── Cross-Dataset (CTRPv2 PharmacoSet extraction — optional) ──
+pyreadr>=0.5          # Read R data files; CTRPv2 S4 objects still need R+PharmacoGx
+
 # ── Development ──
 pytest>=7.0
 pytest-cov>=4.0

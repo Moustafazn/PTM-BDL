@@ -127,6 +127,59 @@ done
 
 ---
 
+### CTRPv2 — Cross-Dataset Generalization Testing (Reviewer Q4)
+
+**Source**: ORCESTRA PharmacoGx — https://orcestra.ca/pset/canonical
+
+CTRPv2 (Cancer Therapeutics Response Portal v2) provides an independent drug sensitivity
+dataset for cross-dataset generalization testing (train on GDSC2, test on CTRPv2).
+
+**Download and extraction (2 steps):**
+
+1. **Download the PharmacoSet RDS file:**
+   - Go to: https://orcestra.ca/pset/canonical
+   - Find **CTRPv2** in the list → click **CTRPv2_2015** → Download
+   - Save as: `data/raw/ctrp/PSet_CTRPv2.rds` (~40 MB)
+
+2. **Extract flat files using R** (one-time, requires R + PharmacoGx):
+   ```bash
+   # Install R if needed: brew install r  (macOS)
+   Rscript src/case_studies/common/extract_ctrp_from_rds.R
+   ```
+   This auto-installs PharmacoGx from Bioconductor and produces:
+   - `data/raw/ctrp/ctrp_sensitivity_summary.csv` — pre-merged summary for Python
+   - `data/raw/ctrp/v20.data.curves_post_qc.txt` — raw dose-response curves
+   - `data/raw/ctrp/v20.meta.per_cell_line.txt` — cell line metadata
+   - `data/raw/ctrp/v20.meta.per_compound.txt` — compound metadata + SMILES
+
+3. **Process for our case studies:**
+   ```bash
+   python -m src.case_studies.common.download_ctrp
+   ```
+   This filters to overlapping drugs and saves to `data/processed/ctrp/`.
+
+**Overlapping drugs with our case studies:**
+
+| Drug | CS1 (EGFR/ERBB2) | CS2 (HDAC) | CS3 (BCR-ABL) |
+|------|:-:|:-:|:-:|
+| Erlotinib | ✓ | | |
+| Gefitinib | ✓ | | |
+| Lapatinib | ✓ | | |
+| Afatinib | ✓ | | |
+| Vorinostat | | ✓ | |
+| Dasatinib | | | ✓ |
+| Imatinib | | | ✓ |
+| Paclitaxel | | | ✓ |
+| Cytarabine | | | ✓ |
+| Methotrexate | | | ✓ |
+
+**References:**
+- Basu et al., Cell 2013 (PMID 23993102) — original CTRPv1
+- Rees et al., Nat Chem Biol 2016 (PMID 26656090) — CTRPv2
+- Seashore-Ludlow et al., Cancer Discovery 2015 (PMID 26482930) — connectivity analysis
+
+---
+
 ## Directory Structure After Download
 
 ```
@@ -148,6 +201,12 @@ data/
 │   ├── ptm/
 │   │   ├── uniprot_P00533.json
 │   │   └── uniprot_P04626.json
+│   ├── ctrp/                            # CTRPv2 cross-dataset (Reviewer Q4)
+│   │   ├── PSet_CTRPv2.rds              # PharmacoSet RDS (~40 MB)
+│   │   ├── ctrp_sensitivity_summary.csv # Extracted by R script
+│   │   ├── v20.data.curves_post_qc.txt
+│   │   ├── v20.meta.per_cell_line.txt
+│   │   └── v20.meta.per_compound.txt
 │   └── drugptm/
 │       └── (study-specific subdirectories)
 ```

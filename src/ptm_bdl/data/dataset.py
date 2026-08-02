@@ -31,6 +31,15 @@ class ResistanceDataset(Dataset):
       • "secondary_only"  — zero primary channel, keep secondary
       • "no_drug"         — zero drug embeddings (drug_emb + drug_pooled)
       • "no_structure"    — zero structural embeddings (struct_emb)
+      • "baseline_only"   — keep PTM levels, zero all deltas (no drug-induced changes)
+                            Tests prospective DRP scenario: can we predict IC50 from
+                            baseline PTM state alone (no drug-PTM interaction data)?
+      • "delta_only"      — set PTM levels to 1.0 (WT), keep deltas (purely dynamic)
+                            Isolates pharmacodynamic signal: does the drug-induced PTM
+                            change carry predictive value beyond baseline state?
+                            Note: ratio channel becomes delta/1.0 ≈ delta; this is
+                            intentional — it represents the correct ratio when baseline
+                            is assumed WT (unknown patient baseline scenario).
     """
 
     def __init__(self, dataset_csv: Path | str, features_dir: Path | str,
@@ -215,6 +224,28 @@ class ResistanceDataset(Dataset):
             drug_pool = np.zeros_like(drug_pool)
         elif self.ablation_mode == "no_structure":
             struct_emb = np.zeros_like(struct_emb)
+        elif self.ablation_mode == "baseline_only":
+            # Keep PTM levels (baseline state), zero all drug-induced changes
+            # Token input becomes [level, 0, 0] — "prospective DRP" scenario
+            delta_ptm_vector = np.zeros_like(delta_ptm_vector)
+            delta_secondary_vector = np.zeros_like(delta_secondary_vector)
+        elif self.ablation_mode == "delta_only":
+            # Set levels to WT baseline (1.0), keep drug-induced changes
+            # Token input becomes [1.0, delta, delta] — purely dynamic signal
+            ptm_vector = np.ones_like(ptm_vector)
+            if len(secondary_vector):
+                secondary_vector = np.ones_like(secondary_vector)
+        elif self.ablation_mode == "measured_only":
+            # Q7: Keep PTM values ONLY for directly measured samples
+            # (propagation_confidence >= 0.90). For propagated samples,
+            # reset to WT baseline (1.0 level, 0.0 delta) — tests whether
+            # mutation-class propagation priors contribute to prediction.
+            if prop_conf < 0.90:
+                ptm_vector = np.ones_like(ptm_vector)
+                delta_ptm_vector = np.zeros_like(delta_ptm_vector)
+                if len(secondary_vector):
+                    secondary_vector = np.ones_like(secondary_vector)
+                delta_secondary_vector = np.zeros_like(delta_secondary_vector)
 
         # ── Targets ───────────────────────────────────────────────────────
         ln_ic50 = float(row.get("ln_ic50", 0.0))

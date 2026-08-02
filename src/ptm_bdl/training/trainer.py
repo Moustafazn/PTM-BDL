@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import gc
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 
 from src.ptm_bdl.training.metrics import compute_metrics
+
+
+def _clear_mps_cache():
+    """Free MPS cached memory to prevent accumulation across epochs/folds."""
+    gc.collect()
+    if hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
+        torch.mps.empty_cache()
 
 
 def train_epoch(model, loader, optimizer, scheduler, focal_loss,
@@ -58,6 +67,7 @@ def train_epoch(model, loader, optimizer, scheduler, focal_loss,
         if not isinstance(scheduler, torch.optim.lr_scheduler.OneCycleLR):
             scheduler.step()
 
+    _clear_mps_cache()
     return np.mean(losses)
 
 
@@ -122,6 +132,8 @@ def validate(model, loader, focal_loss, lambda_reg, lambda_cls, device):
                               all_ic50_preds, all_ic50_targets)
     metrics["loss"] = float(np.mean(val_losses))
     metrics["threshold"] = threshold
+
+    _clear_mps_cache()
     return metrics
 
 

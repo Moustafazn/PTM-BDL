@@ -194,6 +194,6 @@ training:
 model:
   learning_rate: 0.001
   weight_decay: 0.01
-  batch_size: 32
+  batch_size: 16
   num_epochs: 100
   early_stopping_patience: 15

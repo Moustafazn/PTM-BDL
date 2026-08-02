@@ -194,12 +194,94 @@ def evaluate():
         print(f"    Acetylation features: {len(acetyl_cols)} columns")
         print(f"    Phosphorylation features: {len(phospho_cols)} columns")
 
+    # ══════════════════════════════════════════════════════════════════════
+    # REVIEWER ANALYSES: Q2 Leakage, Q8 Exclusion, Q9 ECE, Q10 IG Audit
+    # ══════════════════════════════════════════════════════════════════════
+    print("\n  ── Reviewer Q2: Formal Leakage Analysis ──")
+    from src.ptm_bdl.evaluation.statistical import (
+        compute_leakage_analysis, compute_ece, compute_ece_per_drug,
+    )
+    split_path_q2 = MODEL_DIR / "split_indices.json"
+    if split_path_q2.exists():
+        with open(split_path_q2) as f:
+            split_q2 = json.load(f)
+        leakage = compute_leakage_analysis(
+            df, train_idx=np.array(split_q2["train_idx"]),
+            val_idx=np.array(split_q2["val_idx"]),
+            test_idx=np.array(split_q2["test_idx"]),
+        )
+        print(f"    PTM diversity: {leakage.get('ptm_all_diversity', '?')}")
+        if "constant_channels" in leakage:
+            print(f"    Constant channels: {leakage['constant_channels']['n_constant']}")
+    else:
+        leakage = {}
+
+    # Q8: Per-drug exclusion (Romidepsin for CS2)
+    print("\n  ── Reviewer Q8: Per-Drug Exclusion ──")
+    exclusion_report = {}
+    from sklearn.metrics import roc_auc_score, balanced_accuracy_score
+    for excl_drug in ["Romidepsin"]:
+        excl_mask = df_test["drug_name"] != excl_drug
+        if excl_mask.sum() >= 5:
+            y_excl_cls = y_true_cls[excl_mask.values]
+            y_excl_prob = y_prob_cls[excl_mask.values]
+            y_excl_ic50_t = y_true_ic50[excl_mask.values]
+            y_excl_ic50_p = y_pred_ic50[excl_mask.values]
+            entry = {"n_samples": int(excl_mask.sum())}
+            if len(set(y_excl_cls)) > 1:
+                entry["auroc"] = float(roc_auc_score(y_excl_cls, y_excl_prob))
+            entry["rmse"] = float(np.sqrt(((y_excl_ic50_t - y_excl_ic50_p)**2).mean()))
+            exclusion_report[f"excluding_{excl_drug}"] = entry
+            print(f"    Excluding {excl_drug}: n={entry['n_samples']}, "
+                  f"AUROC={entry.get('auroc', 'N/A')}, RMSE={entry['rmse']:.3f}")
+
+    # Q9: ECE calibration
+    print("\n  ── Reviewer Q9: ECE Calibration ──")
+    ece_overall = compute_ece(y_true_cls, y_prob_cls, n_bins=10)
+    print(f"    Overall ECE: {ece_overall['ece']:.4f}, MCE: {ece_overall['mce']:.4f}")
+    ece_per_drug = compute_ece_per_drug(
+        y_true_cls, y_prob_cls, df_test["drug_name"].values, n_bins=10)
+
+    # Q10: IG scale audit
+    print("\n  ── Reviewer Q10: IG Scale Audit ──")
+    xai_path = RESULTS_DIR / "xai_report.json"
+    ig_audit = {"ig_value_ranges": {}, "issues_found": []}
+    if xai_path.exists():
+        with open(xai_path) as f:
+            xai_data = json.load(f)
+        for key in xai_data:
+            if not key.startswith("integrated_gradients_"):
+                continue
+            mod_type = key.replace("integrated_gradients_", "")
+            for protein, prot_data in xai_data[key].items():
+                if not isinstance(prot_data, dict) or "resist_site_ranking" not in prot_data:
+                    continue
+                rankings = prot_data["resist_site_ranking"]
+                if rankings:
+                    values = [r["mean_abs_attribution"] for r in rankings]
+                    min_v, max_v = min(values), max(values)
+                    ig_audit["ig_value_ranges"][f"{protein}_{mod_type}"] = {
+                        "min": float(min_v), "max": float(max_v), "n_sites": len(values),
+                    }
+                    if max_v < 1e-6:
+                        ig_audit["issues_found"].append(f"{protein} {mod_type}: near-zero IG")
+                    print(f"    {protein:8s} {mod_type:12s}: range=[{min_v:.2e}, {max_v:.2e}]")
+        if not ig_audit["issues_found"]:
+            print(f"    ✓ No obvious scale issues")
+    else:
+        print(f"    ⚠ xai_report.json not found")
+
     # ── Save results ─────────────────────────────────────────────────────
     report = {
         "case_study": CASE_STUDY,
         "overall_metrics": metrics,
         "per_drug": per_drug,
         "drug_group_metrics": group_metrics,
+        "per_drug_exclusion": exclusion_report,
+        "leakage_analysis": leakage,
+        "calibration": {"overall_ece": ece_overall, "per_drug_ece": ece_per_drug},
+        "ig_scale_audit": ig_audit,
+        "frozen_encoders": {"trainable": sum(p.numel() for p in model.parameters() if p.requires_grad), "frozen": "ESM-2(650M)+ChemBERTa(77M)+GearNet all FROZEN"},
         "references": {
             "primary_data": "Badkul et al., DrugPTM-Bench 2024",
             "dose_resolved_proteomics": "Hartl et al., Cell Reports 2024",

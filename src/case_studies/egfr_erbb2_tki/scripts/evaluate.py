@@ -535,6 +535,228 @@ def evaluate():
         }
 
     # ══════════════════════════════════════════════════════════════════════════
+    # PART 3c: FORMAL LEAKAGE ANALYSIS (Reviewer Q2)
+    # ══════════════════════════════════════════════════════════════════════════
+    print(f"\n  {'=' * 55}")
+    print(f"  PART 3c: Formal Leakage Analysis (Reviewer Q2)")
+    print(f"  {'=' * 55}")
+
+    from src.ptm_bdl.evaluation.statistical import compute_leakage_analysis
+    split_path_q2 = MODEL_DIR / "split_indices.json"
+    if split_path_q2.exists():
+        with open(split_path_q2) as f:
+            split_q2 = json.load(f)
+        leakage = compute_leakage_analysis(
+            df,
+            train_idx=np.array(split_q2["train_idx"]),
+            val_idx=np.array(split_q2["val_idx"]),
+            test_idx=np.array(split_q2["test_idx"]),
+        )
+        results["leakage_analysis"] = leakage
+
+        print(f"    PTM baseline unique vectors: {leakage.get('ptm_baseline_unique', '?')} "
+              f"/ {leakage['n_samples']} (diversity={leakage.get('ptm_baseline_diversity', '?')})")
+        print(f"    PTM delta unique vectors:    {leakage.get('ptm_delta_unique', '?')}")
+        if "cell_line_overlap" in leakage:
+            cl = leakage["cell_line_overlap"]
+            print(f"    Cell-line overlap (train↔test): {cl['train_test_overlap']} "
+                  f"/ train={cl['n_train_cells']}, test={cl['n_test_cells']}")
+        if "ptm_provenance" in leakage:
+            prov = leakage["ptm_provenance"]
+            print(f"    Measured (conf≥0.90): {prov['n_measured_high_conf']} samples "
+                  f"({prov['frac_measured']:.1%})")
+            print(f"    Test: {prov['test_measured']} measured, "
+                  f"{prov['test_propagated']} propagated")
+        if "constant_channels" in leakage:
+            cc = leakage["constant_channels"]
+            print(f"    Constant PTM channels: {cc['n_constant']}")
+            if cc['n_constant'] > 0:
+                print(f"      Examples: {', '.join(cc['columns'][:5])}")
+        print(f"    Institutional separation: PTM=DrugPTM-Bench (Xie lab, MS) | "
+              f"IC50=GDSC2 (Sanger, viability)")
+    else:
+        print(f"    ⚠ split_indices.json not found")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PART 3d: PER-DRUG EXCLUSION ANALYSIS (Reviewer Q8)
+    # ══════════════════════════════════════════════════════════════════════════
+    print(f"\n  {'=' * 55}")
+    print(f"  PART 3d: Per-Drug Exclusion Analysis (Reviewer Q8)")
+    print(f"  {'=' * 55}")
+
+    exclusion_report = {}
+    # For CS1: exclude HER2-only drugs to test if they dominate metrics
+    exclusion_drugs = ["Lapatinib", "Sapitinib"]
+    test_drug_names = test_df["drug_name"].values
+
+    for excl_drug in exclusion_drugs:
+        excl_mask = test_drug_names != excl_drug
+        if excl_mask.sum() < 5:
+            continue
+        y_excl_ic50_t = y_true_ic50[excl_mask]
+        y_excl_ic50_p = y_pred_ic50[excl_mask]
+        y_excl_cls_t = y_true_cls[excl_mask]
+        y_excl_prob = y_prob_cls[excl_mask]
+        entry = {
+            "n_samples": int(excl_mask.sum()),
+            "rmse": float(np.sqrt(mean_squared_error(y_excl_ic50_t, y_excl_ic50_p))),
+        }
+        if len(set(y_excl_cls_t)) > 1:
+            entry["auroc"] = float(roc_auc_score(y_excl_cls_t, y_excl_prob))
+            entry["bacc"] = float(balanced_accuracy_score(
+                y_excl_cls_t, (y_excl_prob > RESIST_THRESHOLD).astype(float)))
+        if len(y_excl_ic50_t) > 2 and np.std(y_excl_ic50_p) > 1e-8:
+            entry["pearson_r"] = float(np.corrcoef(y_excl_ic50_t, y_excl_ic50_p)[0, 1])
+        exclusion_report[f"excluding_{excl_drug}"] = entry
+        auroc_s = f"{entry.get('auroc', 'N/A'):.3f}" if 'auroc' in entry else "N/A"
+        print(f"    Excluding {excl_drug}: n={entry['n_samples']}, "
+              f"AUROC={auroc_s}, RMSE={entry['rmse']:.3f}")
+
+    results["per_drug_exclusion"] = exclusion_report
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PART 3e: ECE CALIBRATION ANALYSIS (Reviewer Q9)
+    # ══════════════════════════════════════════════════════════════════════════
+    print(f"\n  {'=' * 55}")
+    print(f"  PART 3e: ECE Calibration Analysis (Reviewer Q9)")
+    print(f"  {'=' * 55}")
+
+    from src.ptm_bdl.evaluation.statistical import compute_ece, compute_ece_per_drug
+
+    ece_overall = compute_ece(y_true_cls, y_prob_cls, n_bins=10)
+    print(f"    Overall ECE: {ece_overall['ece']:.4f}")
+    print(f"    Overall MCE: {ece_overall['mce']:.4f}")
+    print(f"    Mean predicted probability: {y_prob_cls.mean():.3f}")
+
+    ece_per_drug = compute_ece_per_drug(
+        y_true_cls, y_prob_cls, test_df["drug_name"].values, n_bins=10)
+    for drug_name, ece_d in ece_per_drug.items():
+        if drug_name == "overall" or ece_d.get("ece") is None:
+            continue
+        print(f"    {drug_name:20s}: ECE={ece_d['ece']:.4f}, n={ece_d.get('n_samples', '?')}")
+
+    results["calibration"] = {
+        "overall_ece": ece_overall,
+        "per_drug_ece": ece_per_drug,
+        "lambda_weights": {
+            "lambda_reg": 1.0,
+            "lambda_cls": 2.0,
+            "justification": "Classification receives 2× weight because resistance "
+                           "prediction is the primary clinical question. Huber loss for "
+                           "regression provides robustness to IC50 outliers. Focal loss "
+                           "(γ=2.0, α=0.25) addresses class imbalance. Ref: Lin et al., "
+                           "Focal Loss for Dense Object Detection, ICCV 2017.",
+        },
+    }
+
+    # Generate reliability diagram
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        bin_mids = [(ece_overall["bin_edges"][i] + ece_overall["bin_edges"][i+1]) / 2
+                    for i in range(len(ece_overall["bin_accs"]))]
+        counts = ece_overall["bin_counts"]
+        accs = ece_overall["bin_accs"]
+        confs = ece_overall["bin_confs"]
+
+        # Plot bars for accuracy
+        width = 0.08
+        bars = ax.bar(bin_mids, accs, width=width, alpha=0.7, color="#0072B2",
+                      edgecolor="black", label="Accuracy")
+        # Plot gap
+        for i, (mid, acc, conf, cnt) in enumerate(zip(bin_mids, accs, confs, counts)):
+            if cnt > 0:
+                ax.plot([mid, mid], [acc, conf], color="red", linewidth=1.5, alpha=0.7)
+        # Perfect calibration line
+        ax.plot([0, 1], [0, 1], "k--", alpha=0.5, label="Perfect calibration")
+        ax.set_xlabel("Mean Predicted Probability", fontsize=10)
+        ax.set_ylabel("Fraction of Positives", fontsize=10)
+        ax.set_title(f"Reliability Diagram (ECE={ece_overall['ece']:.3f})", fontsize=11)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.legend(loc="upper left")
+        ax.set_aspect("equal")
+        plt.tight_layout()
+        calib_path = FIGURES_DIR / "reliability_diagram.png"
+        plt.savefig(calib_path, dpi=150, bbox_inches="tight")
+        plt.close()
+        print(f"  ✓ Reliability diagram saved: {calib_path}")
+    except Exception as e:
+        print(f"  ⚠ Could not generate reliability diagram: {e}")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PART 3f: IG SCALE AUDIT (Reviewer Q10)
+    # ══════════════════════════════════════════════════════════════════════════
+    print(f"\n  {'=' * 55}")
+    print(f"  PART 3f: IG Scale Audit (Reviewer Q10)")
+    print(f"  {'=' * 55}")
+
+    xai_path = RESULTS_DIR / "xai_report.json"
+    ig_audit = {"ig_value_ranges": {}, "issues_found": []}
+    if xai_path.exists():
+        with open(xai_path) as f:
+            xai_data = json.load(f)
+        for key in xai_data:
+            if not key.startswith("integrated_gradients_"):
+                continue
+            mod_type = key.replace("integrated_gradients_", "")
+            for protein, prot_data in xai_data[key].items():
+                if not isinstance(prot_data, dict) or "resist_site_ranking" not in prot_data:
+                    continue
+                rankings = prot_data["resist_site_ranking"]
+                if not rankings:
+                    continue
+                values = [r["mean_abs_attribution"] for r in rankings]
+                min_v, max_v = min(values), max(values)
+                ig_audit["ig_value_ranges"][f"{protein}_{mod_type}"] = {
+                    "min": float(min_v), "max": float(max_v),
+                    "range": float(max_v - min_v), "n_sites": len(values),
+                }
+                # Check for near-zero (constant input → no signal)
+                if max_v < 1e-6:
+                    ig_audit["issues_found"].append(
+                        f"{protein} {mod_type}: all IG near zero (max={max_v:.2e}) "
+                        f"— likely constant input data")
+                # Check for near-uniform (no discrimination)
+                if max_v > 0 and min_v / max_v > 0.9:
+                    ig_audit["issues_found"].append(
+                        f"{protein} {mod_type}: near-uniform IG (min/max={min_v/max_v:.3f})")
+                # Check for near-binary (Q10: bimodal distribution)
+                if len(values) > 2:
+                    mid_range = (max_v + min_v) / 2
+                    n_near_min = sum(1 for v in values if v < min_v + 0.1 * (max_v - min_v))
+                    n_near_max = sum(1 for v in values if v > max_v - 0.1 * (max_v - min_v))
+                    if n_near_min + n_near_max > 0.8 * len(values) and max_v - min_v > 1e-4:
+                        ig_audit["issues_found"].append(
+                            f"{protein} {mod_type}: near-binary IG magnitudes "
+                            f"({n_near_min} near-zero + {n_near_max} near-max)")
+                print(f"    {protein:8s} {mod_type:12s}: "
+                      f"min={min_v:.2e}, max={max_v:.2e}, range={max_v-min_v:.2e}")
+        if ig_audit["issues_found"]:
+            print(f"    Issues found:")
+            for issue in ig_audit["issues_found"]:
+                print(f"      ⚠ {issue}")
+        else:
+            print(f"    ✓ No obvious scale issues detected")
+    else:
+        print(f"    ⚠ xai_report.json not found — run explain.py first")
+
+    results["ig_scale_audit"] = ig_audit
+
+    # -- Reviewer Q6: Frozen Encoder Documentation --
+    total_p = sum(p.numel() for p in model.parameters())
+    train_p = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    results["frozen_encoders"] = {
+        "trainable_parameters": int(train_p), "total_model_parameters": int(total_p),
+        "pretrained_frozen": {"ESM-2": "650M FROZEN", "ChemBERTa": "77M FROZEN", "GearNet": "FROZEN"},
+        "note": "All pretrained encoders frozen (pre-extracted). Fine-tuning not tested.",
+    }
+    print(f"\n  Q6: Trainable={train_p:,} / Total={total_p:,} | Frozen: ESM-2+ChemBERTa+GearNet")
+
+    # ══════════════════════════════════════════════════════════════════════════
     # PART 4: CONFIDENCE-AWARE ANALYSIS (Propagation Validation)
     # ══════════════════════════════════════════════════════════════════════════
     print(f"\n  {'=' * 55}")

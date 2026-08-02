@@ -35,6 +35,9 @@ dependencies = [
 
     # ── Benchmarking / ML Baselines ──
     "xgboost>=2.0", # Gradient boosting baseline (step14a)
+
+    # ── Cross-Dataset (CTRPv2 — optional but included for convenience) ──
+    "pyreadr>=0.5", # Read R data files (CTRPv2 S4 objects still need R+PharmacoGx)
 ]
 
 [project.optional-dependencies]

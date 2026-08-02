@@ -219,18 +219,30 @@ def extract_esm2_embeddings(sequences: dict):
                 last_hidden = outputs.last_hidden_state
 
                 # Remove special tokens (first and last)
-                per_residue = last_hidden[0, 1:-1, :].cpu().numpy()  # (L, 1280)
+                per_residue_full = last_hidden[0, 1:-1, :].cpu().numpy()  # (L, 1280)
 
-                # Mean pooling for sequence-level embedding
-                pooled = per_residue.mean(axis=0)  # (1280,)
+            # Pool to fixed length for training speed
+            # Self-attention is O(n²) — 1022 tokens is too slow for MPS/GPU.
+            # Adaptive avg pool preserves information from ALL residues.
+            # (Same approach as K562 step07)
+            import torch.nn.functional as F
+            MAX_SEQ_TOKENS = 200
+            if per_residue_full.shape[0] > MAX_SEQ_TOKENS:
+                t = torch.from_numpy(per_residue_full).unsqueeze(0).permute(0, 2, 1)
+                per_residue = F.adaptive_avg_pool1d(
+                    t, MAX_SEQ_TOKENS).permute(0, 2, 1).squeeze(0).numpy()
+                print(f"    {seq_id}: {per_residue_full.shape} → pooled to {per_residue.shape}")
+            else:
+                per_residue = per_residue_full
+
+            # Mean pooling for sequence-level embedding
+            pooled = per_residue.mean(axis=0)  # (1280,)
 
             embeddings[seq_id] = {
-                "per_residue": per_residue,  # (L, 1280)
+                "per_residue": per_residue,  # (MAX_SEQ_TOKENS, 1280)
                 "pooled": pooled,  # (1280,)
                 "sequence_length": len(sequence),
             }
-
-            print(f"    {seq_id}: shape = {per_residue.shape}")
 
         return embeddings
 

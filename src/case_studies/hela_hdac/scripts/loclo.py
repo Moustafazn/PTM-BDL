@@ -34,6 +34,7 @@
 ║    results/hela_hdac/loclo_results.json                                     ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
+import gc
 import json
 import time
 from pathlib import Path
@@ -121,18 +122,19 @@ def train_loclo_fold(dataset, train_idx, test_idx, fold_name, cfg, device):
         weight_decay=cfg["model"]["weight_decay"])
     focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
 
-    num_epochs = min(cfg["model"]["num_epochs"], 60)
+    # Training — same as train.py
+    num_epochs = cfg["model"]["num_epochs"]
     patience = cfg["model"]["early_stopping_patience"]
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=num_epochs,
         eta_min=cfg["model"]["learning_rate"] * 0.01)
-    best_score = -1
+    best_score = 0.0
     patience_counter = 0
     best_state = None
 
-    for epoch in range(num_epochs):
-        train_epoch(model, train_loader, optimizer, scheduler, focal_loss,
-                    1.0, 2.0, device)
+    for epoch in range(1, num_epochs + 1):
+        train_loss = train_epoch(model, train_loader, optimizer, scheduler,
+                                 focal_loss, 1.0, 2.0, device)
         val = validate(model, test_loader, focal_loss, 1.0, 2.0, device)
         score = max(val.get("auroc", 0), val.get("balanced_acc", 0))
         if score > best_score:
@@ -141,8 +143,16 @@ def train_loclo_fold(dataset, train_idx, test_idx, fold_name, cfg, device):
             best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
         else:
             patience_counter += 1
-            if patience_counter >= patience:
-                break
+
+        if epoch % 5 == 0 or epoch <= 2:
+            print(f"    {epoch:3d}/{num_epochs} | loss={train_loss:.4f} | "
+                  f"AUROC={val.get('auroc', 0):.3f} | "
+                  f"BAcc={val.get('balanced_acc', 0):.3f} | "
+                  f"RMSE={val.get('rmse', 0):.3f}")
+
+        if patience_counter >= patience:
+            print(f"    Early stopping at epoch {epoch} (best={best_score:.3f})")
+            break
 
     if best_state:
         model.load_state_dict(best_state)
@@ -237,7 +247,7 @@ def main():
             all_metrics.append(fold_result)
 
             auroc = metrics.get("auroc", "N/A")
-            bacc = metrics.get("balanced_acc", "N/A")
+            bacc = metrics.get("balanced_accuracy", metrics.get("balanced_acc", "N/A"))
             auroc_s = f"{auroc:.3f}" if isinstance(auroc, float) else auroc
             bacc_s = f"{bacc:.3f}" if isinstance(bacc, float) else bacc
             print(f"    Results: AUROC={auroc_s}, BAcc={bacc_s} ({elapsed:.0f}s)")
@@ -254,8 +264,9 @@ def main():
 
     auroc_vals = [m.get("auroc") for m in all_metrics
                   if m.get("auroc") is not None]
-    bacc_vals = [m.get("balanced_acc") for m in all_metrics
-                 if m.get("balanced_acc") is not None]
+    bacc_vals = [m.get("balanced_accuracy", m.get("balanced_acc"))
+                 for m in all_metrics
+                 if m.get("balanced_accuracy", m.get("balanced_acc")) is not None]
 
     summary = {
         "n_groups_total": len(unique_groups),
@@ -292,7 +303,108 @@ def main():
     with open(out_path, "w") as f:
         json.dump(report, f, indent=2, default=str)
     print(f"\n  ✓ Saved: {out_path}")
-    print("\n✓ LOCLO complete!")
+    # ══════════════════════════════════════════════════════════════════════
+    # PART 2: COLD-DRUG LODO + COLD-CELL (Reviewer Q4)
+    # ══════════════════════════════════════════════════════════════════════
+    print("\n══════════════════════════════════════════════════════════════")
+    print("PART 2: Cold-Drug LODO + Cold-Cell Evaluation (Reviewer Q4)")
+    print("══════════════════════════════════════════════════════════════")
+
+    from src.ptm_bdl.evaluation.cold_split import (
+        run_leave_one_drug_out, run_cold_cell_evaluation,
+    )
+    from src.ptm_bdl.data import collate_fn as cf
+
+    ds = ResistanceDataset(dataset_path, features_dir)
+
+    def _build_model():
+        return build_model_from_cfg(cfg).to(device)
+
+    def _train_fold(model, tl, vl, dev):
+        focal = FocalLoss(alpha=0.25, gamma=2.0)
+        lr = cfg["model"]["learning_rate"]
+        n_ep = cfg["model"]["num_epochs"]
+        patience = cfg["model"]["early_stopping_patience"]
+        opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=cfg["model"]["weight_decay"])
+        sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=n_ep, eta_min=lr*0.01)
+        best_s, best_st, pc = 0.0, None, 0
+        for ep in range(1, n_ep + 1):
+            loss = train_epoch(model, tl, opt, sched, focal, 1.0, 2.0, dev)
+            vm = validate(model, vl, focal, 1.0, 2.0, dev)
+            s = max(vm.get("auroc", 0), vm.get("balanced_acc", 0))
+            if s > best_s:
+                best_s, pc = s, 0
+                best_st = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            else:
+                pc += 1
+            if ep % 5 == 0 or ep <= 2:
+                print(f"      {ep:3d}/{n_ep} | loss={loss:.4f} | "
+                      f"AUROC={vm.get('auroc', 0):.3f} | "
+                      f"BAcc={vm.get('balanced_acc', 0):.3f}")
+            if pc >= patience:
+                print(f"      Early stop ep {ep} (best={best_s:.3f})")
+                break
+        if best_st: model.load_state_dict(best_st)
+        return model
+
+    # Cold-Drug LODO
+    print("\n  ── Cold-Drug (Leave-One-Drug-Out) ──")
+    lodo = run_leave_one_drug_out(
+        ds, ds.df["drug_name"].values, _build_model, _train_fold,
+        cf, batch_size=cfg["model"]["batch_size"], device=str(device), min_test_samples=5)
+    with open(RESULTS_DIR / "cold_drug_lodo.json", "w") as f:
+        json.dump(lodo, f, indent=2, default=str)
+    print(f"  ✓ Saved: cold_drug_lodo.json")
+
+    # Cold-Cell
+    print("\n  ── Cold-Cell (cell-line-level K-fold) ──")
+    cell_col = "cell_line_name" if "cell_line_name" in ds.df.columns else "cell_line"
+    if cell_col in ds.df.columns:
+        cc = run_cold_cell_evaluation(
+            ds, ds.df[cell_col].values, _build_model, _train_fold,
+            cf, n_folds=5, batch_size=cfg["model"]["batch_size"], device=str(device))
+        with open(RESULTS_DIR / "cold_cell_results.json", "w") as f:
+            json.dump(cc, f, indent=2, default=str)
+        print(f"  ✓ Saved: cold_cell_results.json")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # PART 3: CROSS-DATASET — GDSC → CTRPv2 (Reviewer Q4)
+    # ══════════════════════════════════════════════════════════════════════
+    print("\n══════════════════════════════════════════════════════════════")
+    print("PART 3: Cross-Dataset GDSC -> CTRPv2 (Reviewer Q4)")
+    print("══════════════════════════════════════════════════════════════")
+
+    from src.ptm_bdl.evaluation.cross_dataset import run_cross_dataset_ctrp
+
+    ctrp_csv = (PROJECT_ROOT / "data" / "processed" / "ctrp"
+                / "ctrp_drug_responses.csv")
+    model_dir = PROJECT_ROOT / cfg["paths"]["models"] / CASE_STUDY
+    best_mp = model_dir / "best_model.pt"
+    if not best_mp.exists():
+        best_mp = model_dir / "ablation_full.pt"
+
+    if best_mp.exists() and ctrp_csv.exists():
+        ctrp_model = build_model_from_cfg(cfg).to(device)
+        ctrp_model.load_state_dict(torch.load(
+            best_mp, map_location=device, weights_only=True))
+        ctrp_model.eval()
+
+        ctrp_results = run_cross_dataset_ctrp(
+            model=ctrp_model, dataset=ds,
+            ctrp_csv_path=str(ctrp_csv), collate_fn=cf,
+            batch_size=cfg["model"]["batch_size"], device=str(device),
+        )
+        ctrp_out = RESULTS_DIR / "cross_dataset_ctrp.json"
+        with open(ctrp_out, "w") as f:
+            json.dump(ctrp_results, f, indent=2, default=str)
+        print(f"  ✓ Saved: {ctrp_out}")
+    else:
+        if not best_mp.exists():
+            print("  ⚠ No trained model — skipping CTRP")
+        if not ctrp_csv.exists():
+            print("  ⚠ CTRP data not found — run download_ctrp.py")
+
+    print("\n✓ LOCLO + Cold-start complete!")
 
 
 if __name__ == "__main__":

@@ -532,6 +532,18 @@ def extract_all_structural_embeddings():
             print(f"    ✗ Could not process {pdb_id}")
             continue
 
+        # ── Pool to fixed 200 tokens for training speed ──────────────────────
+        # Self-attention is O(n²) — 300+ tokens is too slow for MPS/GPU.
+        # Adaptive avg pool preserves information from ALL residues.
+        # (Same approach as K562 step08)
+        import torch.nn.functional as F
+        MAX_STRUCT_TOKENS = 200
+        if embeddings.shape[0] > MAX_STRUCT_TOKENS:
+            t = torch.from_numpy(embeddings).unsqueeze(0).permute(0, 2, 1)
+            embeddings = F.adaptive_avg_pool1d(
+                t, MAX_STRUCT_TOKENS).permute(0, 2, 1).squeeze(0).numpy()
+            print(f"      Pooled: → {embeddings.shape}")
+
         # ── Save ─────────────────────────────────────────────────────────────
         np.save(FEATURES_DIR / f"{pdb_id}_residue_embeddings.npy", embeddings)
         if coords is not None:

@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """
-HeLa/HDAC — Publication Figures.
+CS2 (HeLa/HDAC) — Publication Figures (Updated).
 
-Generates publication-quality figures for the HeLa/HDAC case study:
-  Fig 1: Benchmarking — PTM-BDL vs ML baselines (bar chart)
-  Fig 2: Ablation — modality contribution (ΔPerformance per ablation)
-  Fig 3: XAI — phospho vs acetyl IG attributions per drug
-  Fig 4: Cross-type attention heatmap (phospho ↔ acetyl crosstalk)
-  Fig S1: Per-drug performance breakdown
-  Fig S2: A486 (inactive control) discrimination analysis
-
-Ref: Lasko et al., Nat Rev Drug Discov 2024 (PMID 38382638) — HDAC resistance
-Ref: Fischle et al., Nature 2003 (PMID 14573844) — H3S10ph-K9ac switch
+Generates all main-text and supplementary figures addressing professor feedback:
+  - Fig_S_cold_start:      Cold-cell + cold-drug LODO (Q4)
+  - Fig_S_cross_dataset:   GDSC→CTRP (Q4)
+  - Fig_S_stability:       IG rank stability across seeds (Q5)
+  - Fig_S_calibration:     Reliability diagram + ECE (Q9)
+  - Fig_S_baseline_ablation: Baseline-only vs delta-only PTM (Q1/Q3)
+  - Fig_S_loclo:           LOCLO by tissue type
+  - Fig_S_excl_romidepsin: Metrics excluding Romidepsin (Q8)
 """
 import json
 from pathlib import Path
@@ -26,100 +24,62 @@ RESULTS_DIR = PROJECT_ROOT / cfg["paths"]["results"] / CASE_STUDY
 FIGURES_DIR = RESULTS_DIR / "publication" / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
+NM_DPI = 300
+SINGLE_COL = 89 / 25.4
+DOUBLE_COL = 183 / 25.4
+
+COLORS = {
+    "ours": "#0072B2", "ablation_no": "#D55E00", "ablation_full": "#0072B2",
+    "phospho": "#56B4E9", "acetyl": "#009E73", "cold_cell": "#CC79A7",
+    "cold_drug": "#E69F00", "baseline": "#F0E442",
+}
+
 
 def setup_matplotlib():
-    """Configure matplotlib for publication quality."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     plt.rcParams.update({
-        "font.size": 12, "axes.labelsize": 14, "axes.titlesize": 16,
-        "figure.dpi": 300, "savefig.dpi": 300, "savefig.bbox": "tight",
         "font.family": "sans-serif",
+        "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+        "font.size": 8, "axes.labelsize": 8, "axes.titlesize": 9,
+        "xtick.labelsize": 7, "ytick.labelsize": 7, "legend.fontsize": 7,
+        "figure.dpi": NM_DPI, "savefig.dpi": NM_DPI,
+        "savefig.bbox": "tight", "savefig.pad_inches": 0.05,
+        "axes.linewidth": 0.5, "lines.linewidth": 1.0,
     })
     return plt
 
 
 def load_results():
-    """Load all result JSONs."""
     results = {}
     for name in ["evaluation_report", "ablation_study", "crossval_results",
                   "ml_baselines", "xai_report", "statistical_tests",
-                  "stability_analysis"]:
+                  "stability_analysis", "loclo_results",
+                  "cold_cell_results", "cold_drug_lodo", "cross_dataset_ctrp"]:
         path = RESULTS_DIR / f"{name}.json"
         if path.exists():
             with open(path) as f:
                 results[name] = json.load(f)
+            print(f"  ✓ Loaded {name}.json")
+        else:
+            results[name] = None
+            print(f"  ⚠ Missing {name}.json")
     return results
 
 
-def fig_benchmarking(results, plt):
-    """Fig 1: PTM-BDL vs ML baselines performance comparison."""
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-    eval_report = results.get("evaluation_report", {})
-    baselines = results.get("ml_baselines", {}).get("baselines", {})
-
-    methods = ["PTM-BDL"] + list(baselines.keys())
-    aurocs = [eval_report.get("overall_metrics", {}).get("auroc", 0)]
-    aurocs += [b.get("auroc", 0) for b in baselines.values()]
-
-    axes[0].barh(methods, aurocs, color=["#2196F3"] + ["#90CAF9"] * len(baselines))
-    axes[0].set_xlabel("AUROC")
-    axes[0].set_title("Classification Performance")
-
-    rmses = [eval_report.get("overall_metrics", {}).get("rmse", 0)]
-    rmses += [b.get("rmse", 0) for b in baselines.values()]
-    axes[1].barh(methods, rmses, color=["#2196F3"] + ["#90CAF9"] * len(baselines))
-    axes[1].set_xlabel("RMSE")
-    axes[1].set_title("Regression Performance")
-
-    plt.suptitle(f"{CASE_STUDY} — Benchmarking", fontsize=18)
-    plt.tight_layout()
-    plt.savefig(FIGURES_DIR / "Fig_benchmarking.png")
-    plt.savefig(FIGURES_DIR / "Fig_benchmarking.pdf")
-    print(f"  ✓ Fig_benchmarking saved")
-
-
-def fig_ablation(results, plt):
-    """Fig 2: Ablation study — modality contributions."""
-    ablation = results.get("ablation_study", {})
-    if not ablation or "full" not in ablation:
-        print("  ⚠ No ablation results — skipping")
-        return
-
-    # Ablation arms are at top level; skip metadata keys starting with '_'
-    full_auroc = ablation["full"].get("test_metrics", {}).get("auroc", 0)
-    modes = [m for m in ablation if m != "full" and not m.startswith("_")]
-    labels = [ablation[m].get("label", m) for m in modes]
-    deltas = [ablation[m].get("test_metrics", {}).get("auroc", 0) - full_auroc
-              for m in modes]
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    colors = ["#f44336" if d < 0 else "#4CAF50" for d in deltas]
-    ax.barh(labels, deltas, color=colors)
-    ax.axvline(0, color="black", linewidth=0.5)
-    ax.set_xlabel("Δ AUROC (Ablated − Full)")
-    ax.set_title(f"{CASE_STUDY} — Ablation Study (Full AUROC={full_auroc:.3f})")
-    plt.tight_layout()
-    plt.savefig(FIGURES_DIR / "Fig_ablation.png")
-    plt.savefig(FIGURES_DIR / "Fig_ablation.pdf")
-    print(f"  ✓ Fig_ablation saved")
+def _save(fig, plt, name):
+    for ext in [".pdf", ".png"]:
+        fig.savefig(FIGURES_DIR / f"{name}{ext}", dpi=NM_DPI, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  ✓ Saved: {name}")
 
 
 def _resolve_labels(protein, labels, channel="phospho"):
-    """Map generic slot labels to per-protein biological residue names from config.
-
-    The dataset uses shared column names (ptm_S29, secondary_slot00) for ALL
-    proteins, but each protein has different actual sites at each slot position.
-    This function resolves by position index using the config's per-protein
-    site definitions.
-    """
     ptm_cfg = cfg.get("ptm", {})
     prot_cfg = ptm_cfg.get(protein, {})
     key = "phospho_sites" if channel == "phospho" else "acetyl_sites"
     sites = prot_cfg.get(key, [])
-
     resolved = []
     for i, lbl in enumerate(labels):
         if i < len(sites):
@@ -129,145 +89,345 @@ def _resolve_labels(protein, labels, channel="phospho"):
     return resolved
 
 
-def fig_xai_ptm_types(results, plt):
-    """Fig 3: XAI — phospho vs acetyl IG attributions from stability_analysis.
+# ═══════════════════ Main text figures ═══════════════════
 
-    Reads per-protein IG data (phospho + acetyl) from stability_analysis.json
-    (generated by ablation.py Part 2) and produces publication-quality bar
-    charts showing per-site attribution rankings for each protein.
-    Labels are resolved to biological residue names via config.yaml.
-    """
+def fig_benchmarking(results, plt):
+    fig, axes = plt.subplots(1, 2, figsize=(DOUBLE_COL, DOUBLE_COL * 0.35))
+    eval_r = results.get("evaluation_report", {})
+    baselines = results.get("ml_baselines", {}).get("baselines", {})
+    methods = {"PTM-BDL": eval_r.get("overall_metrics", {})}
+    methods.update(baselines)
+
+    names = list(methods.keys())
+    aurocs = [methods[n].get("auroc", 0) for n in names]
+    rmses = [methods[n].get("rmse", 0) for n in names]
+    colors = [COLORS["ours"]] + ["#90CAF9"] * (len(names) - 1)
+
+    axes[0].barh(names, aurocs, color=colors, edgecolor="white")
+    axes[0].set_xlabel("AUROC"); axes[0].set_title("(a) Classification", fontsize=9, fontweight="bold")
+    for i, v in enumerate(aurocs): axes[0].text(v + 0.005, i, f"{v:.3f}", va="center", fontsize=6)
+
+    axes[1].barh(names, rmses, color=colors, edgecolor="white")
+    axes[1].set_xlabel("RMSE"); axes[1].set_title("(b) Regression", fontsize=9, fontweight="bold")
+    for i, v in enumerate(rmses): axes[1].text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=6)
+
+    plt.suptitle("CS2: HeLa/HDAC — Benchmarking", fontsize=11, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    _save(fig, plt, "Fig_benchmarking")
+
+
+def fig_ablation(results, plt):
+    ablation = results.get("ablation_study", {})
+    if not ablation or "full" not in ablation: print("  ⚠ No ablation"); return
+
+    full_auroc = ablation["full"].get("test_metrics", {}).get("auroc", 0)
+    modes = [m for m in ablation if m != "full" and not m.startswith("_")]
+    labels = [ablation[m].get("label", m) for m in modes]
+    deltas = [ablation[m].get("test_metrics", {}).get("auroc", 0) - full_auroc for m in modes]
+
+    fig, ax = plt.subplots(figsize=(DOUBLE_COL * 0.6, DOUBLE_COL * 0.35))
+    colors = ["#f44336" if d < 0 else "#4CAF50" for d in deltas]
+    ax.barh(labels, deltas, color=colors)
+    ax.axvline(0, color="black", linewidth=0.5)
+    ax.set_xlabel("Δ AUROC (Ablated − Full)")
+    ax.set_title(f"CS2 Ablation (Full AUROC={full_auroc:.3f})", fontsize=9, fontweight="bold")
+    plt.tight_layout()
+    _save(fig, plt, "Fig_ablation")
+
+
+def fig_xai_ptm_types(results, plt):
     stability = results.get("stability_analysis", {})
-    if not stability or "per_protein" not in stability:
-        print("  ⚠ No stability_analysis results — skipping Fig_interpretability")
-        return
+    if not stability or "per_protein" not in stability: print("  ⚠ No stability_analysis"); return
 
     per_protein = stability["per_protein"]
     proteins = sorted(per_protein.keys())
     n_proteins = len(proteins)
-    if n_proteins == 0:
-        print("  ⚠ No per-protein data in stability_analysis — skipping")
-        return
+    if n_proteins == 0: return
 
-    # Check if acetyl data exists with non-zero values
     has_acetyl = any(
         "acetyl_mean_importance" in per_protein[p]
-        and len(per_protein[p].get("acetyl_mean_importance", [])) > 0
         and any(v > 0 for v in per_protein[p].get("acetyl_mean_importance", []))
         for p in proteins
     )
-
     n_rows = 2 if has_acetyl else 1
-    fig, axes = plt.subplots(n_rows, n_proteins,
-                             figsize=(6 * n_proteins, 4.5 * n_rows),
-                             squeeze=False)
-
-    # Residue-type colour palette (Wong colourblind-safe)
     aa_colors = {"Y": "#D55E00", "S": "#56B4E9", "T": "#F0E442", "K": "#009E73"}
 
-    def _residue_color(label, default="#999999"):
-        """Pick colour based on residue letter in the label."""
+    def _rc(label):
         up = label.upper()
         for aa in ["Y", "S", "T", "K"]:
-            if aa in up:
-                return aa_colors[aa]
-        return default
+            if aa in up: return aa_colors[aa]
+        return "#999999"
 
+    fig, axes = plt.subplots(n_rows, n_proteins, figsize=(6 * n_proteins, 4.5 * n_rows), squeeze=False)
     for col, protein in enumerate(proteins):
         data = per_protein[protein]
-
-        # ── Phospho panel ────────────────────────────────────────────
-        ph_labels_raw = data.get("phospho_site_labels", [])
-        ph_values = data.get("phospho_mean_importance", [])
-        # Resolve generic labels → biological names from config
-        ph_labels = _resolve_labels(protein, ph_labels_raw, "phospho")
-        if ph_labels and ph_values:
-            # Filter out padded slots (zero importance)
-            active = [(lbl, val) for lbl, val in zip(ph_labels, ph_values)
-                      if not lbl.startswith("pad_")]
+        # Phospho
+        ph_raw = data.get("phospho_site_labels", [])
+        ph_vals = data.get("phospho_mean_importance", [])
+        ph_labels = _resolve_labels(protein, ph_raw, "phospho")
+        if ph_labels and ph_vals:
+            active = [(l, v) for l, v in zip(ph_labels, ph_vals) if not l.startswith("pad_")]
             if active:
-                ph_labels_f, ph_values_f = zip(*active)
-            else:
-                ph_labels_f, ph_values_f = ph_labels, ph_values
-            order = sorted(range(len(ph_values_f)),
-                           key=lambda i: ph_values_f[i], reverse=True)
-            s_labels = [ph_labels_f[i] for i in order]
-            s_values = [ph_values_f[i] for i in order]
-            colors = [_residue_color(lbl) for lbl in s_labels]
+                labs, vals = zip(*active)
+                order = sorted(range(len(vals)), key=lambda i: vals[i], reverse=True)
+                sl = [labs[i] for i in order]; sv = [vals[i] for i in order]
+                ax = axes[0, col]
+                ax.barh(range(len(sl)), sv, color=[_rc(l) for l in sl], edgecolor="white", linewidth=0.5)
+                ax.set_yticks(range(len(sl))); ax.set_yticklabels(sl, fontsize=8); ax.invert_yaxis()
+                ax.set_xlabel("Mean |IG|", fontsize=9)
+                ax.set_title(f"{protein} — Phospho", fontsize=11, fontweight="bold")
+                for i, v in enumerate(sv): ax.text(v, i, f" {v:.5f}", va="center", fontsize=6.5)
 
-            ax = axes[0, col]
-            ax.barh(range(len(s_labels)), s_values,
-                    color=colors, edgecolor="white", linewidth=0.5)
-            ax.set_yticks(range(len(s_labels)))
-            ax.set_yticklabels(s_labels, fontsize=8)
-            ax.invert_yaxis()
-            ax.set_xlabel("Mean |IG| Attribution", fontsize=9)
-            ax.set_title(f"{protein} — Phospho Sites", fontsize=11,
-                         fontweight="bold")
-            for i, v in enumerate(s_values):
-                ax.text(v, i, f" {v:.5f}", va="center", fontsize=6.5,
-                        color="#333")
-
-        # ── Acetyl panel ─────────────────────────────────────────────
+        # Acetyl
         if has_acetyl and n_rows > 1:
-            ac_labels_raw = data.get("acetyl_site_labels", [])
-            ac_values = data.get("acetyl_mean_importance", [])
-            # Resolve generic labels → biological names from config
-            ac_labels = _resolve_labels(protein, ac_labels_raw, "acetyl")
-            if ac_labels and ac_values:
-                # Filter out padded slots
-                active = [(lbl, val) for lbl, val in zip(ac_labels, ac_values)
-                          if not lbl.startswith("pad_")]
+            ac_raw = data.get("acetyl_site_labels", [])
+            ac_vals = data.get("acetyl_mean_importance", [])
+            ac_labels = _resolve_labels(protein, ac_raw, "acetyl")
+            if ac_labels and ac_vals:
+                active = [(l, v) for l, v in zip(ac_labels, ac_vals) if not l.startswith("pad_")]
                 if active:
-                    ac_labels_f, ac_values_f = zip(*active)
-                else:
-                    ac_labels_f, ac_values_f = ac_labels, ac_values
-                order = sorted(range(len(ac_values_f)),
-                               key=lambda i: ac_values_f[i], reverse=True)
-                s_labels = [ac_labels_f[i] for i in order]
-                s_values = [ac_values_f[i] for i in order]
-
-                ax = axes[1, col]
-                ax.barh(range(len(s_labels)), s_values,
-                        color="#009E73", edgecolor="white", linewidth=0.5)
-                ax.set_yticks(range(len(s_labels)))
-                ax.set_yticklabels(s_labels, fontsize=8)
-                ax.invert_yaxis()
-                ax.set_xlabel("Mean |IG| Attribution", fontsize=9)
-                ax.set_title(f"{protein} — Acetyl Sites", fontsize=11,
-                             fontweight="bold")
-                for i, v in enumerate(s_values):
-                    ax.text(v, i, f" {v:.5f}", va="center", fontsize=6.5,
-                            color="#333")
+                    labs, vals = zip(*active)
+                    order = sorted(range(len(vals)), key=lambda i: vals[i], reverse=True)
+                    sl = [labs[i] for i in order]; sv = [vals[i] for i in order]
+                    ax = axes[1, col]
+                    ax.barh(range(len(sl)), sv, color="#009E73", edgecolor="white", linewidth=0.5)
+                    ax.set_yticks(range(len(sl))); ax.set_yticklabels(sl, fontsize=8); ax.invert_yaxis()
+                    ax.set_xlabel("Mean |IG|", fontsize=9)
+                    ax.set_title(f"{protein} — Acetyl", fontsize=11, fontweight="bold")
+                    for i, v in enumerate(sv): ax.text(v, i, f" {v:.5f}", va="center", fontsize=6.5)
 
     n_seeds = stability.get("n_seeds", "?")
-    plt.suptitle(
-        f"CS2: HeLa/HDAC — Integrated Gradient Attributions\n"
-        f"(phospho + acetyl per protein, {n_seeds} seeds)",
-        fontsize=14, fontweight="bold",
-    )
+    plt.suptitle(f"CS2: HeLa/HDAC — IG Attributions ({n_seeds} seeds)", fontsize=14, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.94])
-    plt.savefig(FIGURES_DIR / "Fig_interpretability.png", dpi=300)
-    plt.savefig(FIGURES_DIR / "Fig_interpretability.pdf", dpi=300)
-    plt.close()
-    print(f"  ✓ Fig_interpretability saved ({n_proteins} proteins, "
-          f"{'phospho+acetyl' if has_acetyl else 'phospho only'})")
+    _save(fig, plt, "Fig_interpretability")
 
+
+# ═══════════════════ Supplementary figures ═══════════════════
+
+def fig_s_loclo(results, plt):
+    loclo = results.get("loclo_results")
+    if not loclo or "per_group_results" not in loclo: print("  ⚠ No LOCLO results"); return
+    per_group = loclo["per_group_results"]
+    fig, axes = plt.subplots(1, 2, figsize=(DOUBLE_COL, DOUBLE_COL * 0.35))
+    groups, pccs, aurocs, ns = [], [], [], []
+    for g, m in per_group.items():
+        if "pearson_r" not in m: continue
+        groups.append(g); pccs.append(m["pearson_r"]); aurocs.append(m.get("auroc", 0) or 0)
+        ns.append(m.get("n_test", 0))
+    if not groups: plt.close(fig); return
+    x = np.arange(len(groups))
+    for panel, vals, ylabel in [(0, pccs, "Pearson R"), (1, aurocs, "AUROC")]:
+        ax = axes[panel]
+        ax.bar(x, vals, color=COLORS["ours"], edgecolor="white")
+        ax.set_xticks(x); ax.set_xticklabels(groups, rotation=45, ha="right", fontsize=6)
+        ax.set_ylabel(ylabel)
+        for i, (v, n) in enumerate(zip(vals, ns)): ax.text(i, v + 0.01, f"n={n}", ha="center", fontsize=5)
+    plt.suptitle("CS2: LOCLO by Tissue Type", fontsize=10, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    _save(fig, plt, "Fig_S_loclo")
+
+
+def fig_s_cold_start(results, plt):
+    fig, axes = plt.subplots(1, 2, figsize=(DOUBLE_COL, DOUBLE_COL * 0.38))
+    cc = results.get("cold_cell_results")
+    if cc and "per_fold_results" in cc:
+        ax = axes[0]
+        folds = sorted(cc["per_fold_results"].keys())
+        aurocs = [cc["per_fold_results"][f]["auroc"] for f in folds]
+        x = np.arange(len(folds))
+        ax.bar(x, aurocs, color=COLORS["cold_cell"], edgecolor="white")
+        ax.set_xticks(x); ax.set_xticklabels([f"F{i+1}" for i in range(len(folds))], fontsize=7)
+        ax.set_ylabel("AUROC"); ax.set_ylim(0.8, 1.0)
+        mean_a = cc["summary"]["mean_auroc"]; std_a = cc["summary"]["std_auroc"]
+        ax.axhline(mean_a, color="red", ls="--", lw=0.8, label=f"Mean={mean_a:.3f}±{std_a:.3f}")
+        ax.legend(fontsize=6)
+        for i, v in enumerate(aurocs): ax.text(i, v + 0.002, f"{v:.3f}", ha="center", fontsize=6)
+    axes[0].set_title("(a) Cold-Cell K-Fold CV", fontsize=9, fontweight="bold")
+
+    cd = results.get("cold_drug_lodo")
+    if cd and "per_drug_results" in cd:
+        ax = axes[1]
+        drugs = [d for d in sorted(cd["per_drug_results"].keys())
+                 if not cd["per_drug_results"][d].get("skipped", False)]
+        aurocs = [cd["per_drug_results"][d].get("auroc", 0) or 0 for d in drugs]
+        x = np.arange(len(drugs))
+        ax.bar(x, aurocs, color=COLORS["cold_drug"], edgecolor="white")
+        ax.set_xticks(x); ax.set_xticklabels([d[:6] for d in drugs], rotation=45, ha="right", fontsize=6)
+        ax.set_ylabel("AUROC"); ax.set_ylim(0, 1.1)
+        for i, v in enumerate(aurocs): ax.text(i, max(v, 0) + 0.02, f"{v:.3f}", ha="center", fontsize=6)
+    axes[1].set_title("(b) Leave-One-Drug-Out", fontsize=9, fontweight="bold")
+    plt.tight_layout()
+    _save(fig, plt, "Fig_S_cold_start")
+
+
+def fig_s_cross_dataset(results, plt):
+    cd = results.get("cross_dataset_ctrp")
+    if not cd or "per_drug" not in cd: print("  ⚠ No cross-dataset"); return
+    fig, ax = plt.subplots(figsize=(SINGLE_COL, SINGLE_COL * 0.9))
+    drugs = sorted(cd["per_drug"].keys())
+    pred_r = [cd["per_drug"][d].get("pred_vs_ctrp_pearson_r", 0) for d in drugs]
+    gdsc_r = [cd["per_drug"][d].get("gdsc_vs_ctrp_pearson_r", 0) for d in drugs]
+    x = np.arange(len(drugs)); w = 0.35
+    ax.bar(x - w/2, gdsc_r, w, label="GDSC→CTRP (raw)", color="#009E73")
+    ax.bar(x + w/2, pred_r, w, label="PTM-BDL→CTRP", color=COLORS["ours"])
+    ax.set_xticks(x); ax.set_xticklabels([d[:8] for d in drugs], rotation=45, ha="right", fontsize=7)
+    ax.set_ylabel("Pearson R"); ax.legend(fontsize=6)
+    ax.set_title("Cross-Dataset (GDSC→CTRPv2)", fontsize=9, fontweight="bold")
+    plt.tight_layout()
+    _save(fig, plt, "Fig_S_cross_dataset")
+
+
+def fig_s_stability(results, plt):
+    stability = results.get("stability_analysis")
+    if not stability or "per_protein" not in stability: return
+    per_protein = stability["per_protein"]
+    proteins = sorted(per_protein.keys())
+    fig, axes = plt.subplots(1, len(proteins), figsize=(5 * len(proteins), 4), squeeze=False)
+    for col, protein in enumerate(proteins):
+        ax = axes[0, col]
+        d = per_protein[protein]
+        ph_raw = d.get("phospho_site_labels", [])
+        ph_vals = d.get("phospho_mean_importance", [])
+        ph_labels = _resolve_labels(protein, ph_raw, "phospho")
+        if ph_labels and ph_vals:
+            active = [(l, v) for l, v in zip(ph_labels, ph_vals) if v > 0 and not l.startswith("pad")]
+            if active:
+                labs, vals = zip(*sorted(active, key=lambda x: x[1], reverse=True))
+                ax.barh(range(len(labs)), vals, color=COLORS["phospho"], edgecolor="white")
+                ax.set_yticks(range(len(labs))); ax.set_yticklabels(labs, fontsize=7); ax.invert_yaxis()
+                ax.set_xlabel("Mean |IG| (3 seeds)")
+        top = d.get("phospho_top_site", "")
+        concordant = d.get("cross_seed_phospho_concordant", False)
+        ax.set_title(f"{protein} Phospho\nTop: {top} ({'concordant' if concordant else 'varies'})",
+                     fontsize=9, fontweight="bold")
+    plt.suptitle("CS2: IG Stability Across Seeds", fontsize=11, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    _save(fig, plt, "Fig_S_stability")
+
+
+def fig_s_calibration(results, plt):
+    ev = results.get("evaluation_report")
+    if not ev or "calibration" not in ev: return
+    cal = ev["calibration"]
+    overall = cal.get("overall_ece", {})
+    per_drug = cal.get("per_drug_ece", {})
+
+    valid_drugs = [k for k in per_drug if k != "overall" and per_drug[k].get("bin_accs")]
+    n_panels = min(len(valid_drugs) + 1, 4)
+    fig, axes = plt.subplots(1, n_panels, figsize=(DOUBLE_COL, DOUBLE_COL * 0.32), squeeze=False)
+    axes = axes[0]
+
+    def _plot_rel(ax, data, title):
+        if not data or "bin_accs" not in data: return
+        edges = data["bin_edges"]; accs = data["bin_accs"]; counts = data["bin_counts"]
+        midpoints = [(edges[i] + edges[i+1]) / 2 for i in range(len(accs))]
+        active = [(m, a, n) for m, a, n in zip(midpoints, accs, counts) if n > 0]
+        if not active: return
+        ms, acs, ns = zip(*active)
+        ax.bar(ms, acs, width=0.08, alpha=0.7, color=COLORS["ours"], edgecolor="white")
+        ax.plot([0, 1], [0, 1], "k--", lw=0.5)
+        ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+        ax.set_xlabel("Pred Prob", fontsize=6); ax.set_ylabel("Frac Positive", fontsize=6)
+        ece = data.get("ece", 0)
+        ax.set_title(f"{title}\nECE={ece:.3f}" if ece else title, fontsize=8, fontweight="bold")
+
+    _plot_rel(axes[0], overall, "Overall")
+    idx = 1
+    for drug in sorted(valid_drugs):
+        if idx >= n_panels: break
+        _plot_rel(axes[idx], per_drug[drug], drug[:10])
+        idx += 1
+    plt.suptitle("CS2: Reliability Diagrams", fontsize=10, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    _save(fig, plt, "Fig_S_calibration")
+
+
+def fig_s_baseline_ablation(results, plt):
+    """Q1/Q3: Baseline-only vs delta-only vs full PTM ablation."""
+    ablation = results.get("ablation_study", {})
+    arms_needed = ["no_ptm", "baseline_only", "delta_only", "full"]
+    if not all(arm in ablation for arm in arms_needed):
+        print("  ⚠ Missing baseline/delta ablation arms"); return
+
+    fig, axes = plt.subplots(1, 2, figsize=(DOUBLE_COL, DOUBLE_COL * 0.35))
+    arm_labels = ["No PTM", "Baseline Only", "Delta Only", "Measured Only", "Full"]
+    arm_keys = ["no_ptm", "baseline_only", "delta_only", "measured_only", "full"]
+    arm_colors = [COLORS["ablation_no"], COLORS["baseline"], "#E69F00", "#CC79A7", COLORS["ablation_full"]]
+
+    for panel, metric, ylabel in [(0, "auroc", "AUROC"), (1, "balanced_acc", "Balanced Accuracy")]:
+        ax = axes[panel]
+        vals = []
+        valid_labels = []
+        valid_colors = []
+        for arm, label, color in zip(arm_keys, arm_labels, arm_colors):
+            d = ablation.get(arm, {})
+            if not d: continue
+            v = d.get("test_metrics", {}).get(metric, 0)
+            vals.append(v); valid_labels.append(label); valid_colors.append(color)
+        ax.bar(range(len(vals)), vals, color=valid_colors, edgecolor="white")
+        ax.set_xticks(range(len(vals))); ax.set_xticklabels(valid_labels, rotation=45, ha="right", fontsize=6)
+        ax.set_ylabel(ylabel)
+        for i, v in enumerate(vals): ax.text(i, v + 0.005, f"{v:.3f}", ha="center", fontsize=6)
+        ax.set_title(f"({'a' if panel == 0 else 'b'}) {ylabel}", fontsize=9, fontweight="bold")
+    plt.suptitle("CS2: Baseline-Only vs Delta-Only PTM Ablation", fontsize=10, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    _save(fig, plt, "Fig_S_baseline_ablation")
+
+
+def fig_s_excl_romidepsin(results, plt):
+    """Q8: Metrics excluding Romidepsin."""
+    ev = results.get("evaluation_report", {})
+    excl = ev.get("per_drug_exclusion", {}).get("excluding_Romidepsin", {})
+    if not excl: print("  ⚠ No excluding_Romidepsin data"); return
+
+    fig, ax = plt.subplots(figsize=(SINGLE_COL, SINGLE_COL * 0.8))
+    full_auroc = ev.get("overall_metrics", {}).get("auroc", 0)
+    excl_auroc = excl.get("auroc", 0)
+    full_rmse = ev.get("overall_metrics", {}).get("rmse", 0)
+    excl_rmse = excl.get("rmse", 0)
+
+    metrics = ["AUROC", "RMSE"]
+    full_vals = [full_auroc, full_rmse]
+    excl_vals = [excl_auroc, excl_rmse]
+    x = np.arange(len(metrics)); w = 0.35
+    ax.bar(x - w/2, full_vals, w, label="All drugs", color=COLORS["ours"])
+    ax.bar(x + w/2, excl_vals, w, label="Excl. Romidepsin", color=COLORS["ablation_no"])
+    ax.set_xticks(x); ax.set_xticklabels(metrics, fontsize=8)
+    ax.legend(fontsize=7)
+    for i in range(len(metrics)):
+        ax.text(i - w/2, full_vals[i] + 0.02, f"{full_vals[i]:.3f}", ha="center", fontsize=6)
+        ax.text(i + w/2, excl_vals[i] + 0.02, f"{excl_vals[i]:.3f}", ha="center", fontsize=6)
+    ax.set_title("CS2: Impact of Romidepsin Exclusion", fontsize=9, fontweight="bold")
+    plt.tight_layout()
+    _save(fig, plt, "Fig_S_excl_romidepsin")
+
+
+# ═══════════════════ Main ═══════════════════
 
 def main():
-    """Generate all publication figures."""
-    print(f"╔══════════════════════════════════════════════════════════════╗")
-    print(f"║  {CASE_STUDY} — Publication Figures                        ║")
-    print(f"╚══════════════════════════════════════════════════════════════╝")
-
+    print("╔══════════════════════════════════════════════════════════════╗")
+    print("║  CS2 (HeLa/HDAC) — Publication Figures (Updated)           ║")
+    print("╚══════════════════════════════════════════════════════════════╝")
     plt = setup_matplotlib()
     results = load_results()
 
+    print("\n  ── Main Text Figures ──")
     fig_benchmarking(results, plt)
     fig_ablation(results, plt)
     fig_xai_ptm_types(results, plt)
 
-    print(f"\n✓ All figures saved to: {FIGURES_DIR}")
+    print("\n  ── Supplementary Figures ──")
+    fig_s_loclo(results, plt)
+    fig_s_cold_start(results, plt)
+    fig_s_cross_dataset(results, plt)
+    fig_s_stability(results, plt)
+    fig_s_calibration(results, plt)
+    fig_s_baseline_ablation(results, plt)
+    fig_s_excl_romidepsin(results, plt)
+
+    generated = list(FIGURES_DIR.glob("*.pdf"))
+    print(f"\n  ✓ Generated {len(generated)} figures in {FIGURES_DIR}")
+    print("✓ CS2 figures complete!")
 
 
 if __name__ == "__main__":

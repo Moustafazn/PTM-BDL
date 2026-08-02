@@ -202,6 +202,18 @@ ABLATION_CONFIGS = {
         description="All PTM features (phospho + glyco + L2) zeroed.",
         color="#d62728", use_typed_attention=True, data_mode="no_ptm",
     ),
+    "baseline_only": dict(
+        label="Model B0: Baseline PTM only",
+        description="PTM levels (baseline state) active, all drug-induced deltas zeroed. "
+                    "Tests prospective DRP scenario (no drug-PTM interaction data).",
+        color="#ff7f0e", use_typed_attention=True, data_mode="baseline_only",
+    ),
+    "delta_only": dict(
+        label="Model B1: Delta PTM only",
+        description="PTM levels set to WT (1.0), drug-induced deltas active. "
+                    "Isolates purely dynamic pharmacodynamic signal.",
+        color="#2ca02c", use_typed_attention=True, data_mode="delta_only",
+    ),
     "no_secondary": dict(
         label="Model E: No secondary (glyco)",
         description="Primary (phospho) channel active, secondary (glyco) channel zeroed.",
@@ -225,15 +237,19 @@ ABLATION_CONFIGS = {
     ),
 }
 
-# Order matches the proposal §9.1 Models A/B/C/D table
-#   no_ptm           = Model A (static-only baseline)
-#   no_secondary     = Model B (primary/phospho-only PTM-BDL)
-#   full             = Model C (primary+secondary PTM-BDL, production)
-#   no_typed_attention = Model D (architectural ablation: MLP in place of
-#                                  typed self-attention)
-# plus secondary_only as a sanity arm — keeps secondary channel only.
+# Order: no_ptm → baseline_only → delta_only decomposes the PTM signal
+# into static vs dynamic contributions (addresses reviewer Q1/Q3).
+ABLATION_CONFIGS["measured_only"] = dict(
+    label="Model M: Measured PTM only",
+    description="PTM values kept only for directly measured samples (conf≥0.90). "
+                "Propagated samples reset to WT baseline. Tests Q7: contribution "
+                "of mutation-class propagation priors vs direct measurements.",
+    color="#17becf", use_typed_attention=True, data_mode="measured_only",
+)
+
 ABLATION_ORDER = [
-    "no_ptm", "no_secondary", "secondary_only", "no_typed_attention", "full",
+    "no_ptm", "baseline_only", "delta_only", "measured_only",
+    "no_secondary", "secondary_only", "no_typed_attention", "full",
 ]
 
 
@@ -578,15 +594,36 @@ def run_stability_analysis(device, n_seeds: int = 3):
                       f"phospho top={labels_ph[ph_top]}, "
                       f"glyco top={labels_gl[gl_top]}")
 
-    # ── Aggregate across seeds ──────────────────────────────────────────
+    # ── Aggregate across seeds + IG rank stability (Q5) ─────────────────
+    from src.ptm_bdl.evaluation.statistical import ig_rank_stability
+
     def _mean_axis(seed_list, protein, mod):
         arr = [s[protein][mod] for s in seed_list if s[protein]["n_samples"] > 0]
         return np.mean(arr, axis=0) if arr else np.zeros(12)
+
+    def _per_seed_arrays(seed_list, protein, mod):
+        return [s[protein][mod] for s in seed_list if s[protein]["n_samples"] > 0]
 
     egfr_phospho_mean = _mean_axis(per_seed, "EGFR", "phospho")
     egfr_glyco_mean = _mean_axis(per_seed, "EGFR", "glyco")
     erbb2_phospho_mean = _mean_axis(per_seed, "ERBB2", "phospho")
     erbb2_glyco_mean = _mean_axis(per_seed, "ERBB2", "glyco")
+
+    # Compute IG rank stability (Spearman ρ across seeds — Reviewer Q5)
+    stability_metrics = {}
+    for protein, mod, labels in [
+        ("EGFR", "phospho", PHOSPHO_LABELS_EGFR),
+        ("EGFR", "glyco", GLYCO_LABELS_EGFR),
+        ("ERBB2", "phospho", PHOSPHO_LABELS_ERBB2),
+        ("ERBB2", "glyco", GLYCO_LABELS_ERBB2),
+    ]:
+        arrays = _per_seed_arrays(per_seed, protein, mod)
+        if len(arrays) >= 2:
+            stab = ig_rank_stability(arrays, site_labels=labels)
+            stability_metrics[f"{protein}_{mod}"] = stab
+            print(f"    {protein} {mod}: Spearman ρ (mean)={stab['mean_spearman_rho']:.3f}, "
+                  f"top1_consistent={stab['top1_consistent']}, "
+                  f"top3_Jaccard={stab['top3_jaccard_overlap']:.3f}")
 
     egfr_phospho_top_idx = int(np.argmax(egfr_phospho_mean))
     erbb2_phospho_top_idx = int(np.argmax(erbb2_phospho_mean))
@@ -627,6 +664,9 @@ def run_stability_analysis(device, n_seeds: int = 3):
             "glyco_mean_importance": egfr_glyco_mean.tolist(),
             "phospho_top_site": PHOSPHO_LABELS_EGFR[egfr_phospho_top_idx],
             "glyco_top_site": GLYCO_LABELS_EGFR[egfr_glyco_top_idx],
+            # Per-seed arrays for Q5 rank stability analysis
+            "phospho_per_seed": [a.tolist() for a in _per_seed_arrays(per_seed, "EGFR", "phospho")],
+            "glyco_per_seed": [a.tolist() for a in _per_seed_arrays(per_seed, "EGFR", "glyco")],
         },
         "erbb2": {
             "phospho_sites": PHOSPHO_LABELS_ERBB2,
@@ -635,9 +675,14 @@ def run_stability_analysis(device, n_seeds: int = 3):
             "glyco_mean_importance": erbb2_glyco_mean.tolist(),
             "phospho_top_site": PHOSPHO_LABELS_ERBB2[erbb2_phospho_top_idx],
             "glyco_top_site": GLYCO_LABELS_ERBB2[erbb2_glyco_top_idx],
+            # Per-seed arrays for Q5 rank stability analysis
+            "phospho_per_seed": [a.tolist() for a in _per_seed_arrays(per_seed, "ERBB2", "phospho")],
+            "glyco_per_seed": [a.tolist() for a in _per_seed_arrays(per_seed, "ERBB2", "glyco")],
         },
         "homology_phospho_concordant": bool(homology_phospho_concordant),
         "homology_glyco_concordant": bool(homology_glyco_concordant),
+        # Q5: IG rank stability metrics (Spearman ρ, top-k Jaccard across seeds)
+        "ig_rank_stability": stability_metrics,
     }
     out_path = RESULTS_DIR / "stability_analysis.json"
     with open(out_path, "w") as f:
