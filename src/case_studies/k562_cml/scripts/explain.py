@@ -129,8 +129,6 @@ def _predict_single(model, sample, device=None):
             drug_embeddings=batch["drug_emb"],
             ptm_vector=batch["ptm_vector"],
             delta_ptm_vector=batch["delta_ptm_vector"],
-            secondary_vector=batch["secondary_vector"],
-            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
     return float(ic50_pred.item()), float(torch.sigmoid(resist_logits).item())

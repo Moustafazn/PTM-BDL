@@ -69,12 +69,11 @@ class PTMBDLMlpAblation(nn.Module):
         self.register_buffer("type_id_table", registry.type_id_table.clone(), persistent=False)
         self.register_buffer("is_real_table", registry.is_real_table.clone(), persistent=False)
 
-    def forward(self, ptm_vector, delta_ptm_vector, secondary_vector,
-                delta_secondary_vector, target_protein):
+    def forward(self, ptm_vector, delta_ptm_vector, target_protein):
         protein_id = target_protein.clamp(min=0, max=self.is_real_table.size(0) - 1).long()
         device = ptm_vector.device
-        levels = torch.cat([ptm_vector, secondary_vector], dim=1)
-        deltas = torch.cat([delta_ptm_vector, delta_secondary_vector], dim=1)
+        levels = ptm_vector
+        deltas = delta_ptm_vector
         ratios = deltas / (levels.abs() + 1e-6)
         vals = torch.stack([levels, deltas, ratios], dim=-1)
         x = self.value_proj(vals)

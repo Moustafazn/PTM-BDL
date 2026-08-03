@@ -309,10 +309,8 @@ pip install git+https://github.com/Moustafazn/PTM-BDL-Framework.git
 | `struct_embeddings`  | (B, M, 512)        | float32 | GearNet per-residue structural embeddings         |
 | `drug_pooled`        | (B, 384)           | float32 | ChemBERTa pooled drug embedding                   |
 | `drug_embeddings`    | (B, N, 384)        | float32 | ChemBERTa per-token drug embeddings (optional)    |
-| `ptm_vector`              | (B, n_primary_sites)   | float32 | Baseline primary PTM occupancy per site (1.0 = wild-type) |
-| `delta_ptm_vector`        | (B, n_primary_sites)   | float32 | Drug-induced primary PTM change per site (0.0 = no drug)  |
-| `secondary_vector`        | (B, n_secondary_sites) | float32 | Baseline secondary PTM occupancy per site                 |
-| `delta_secondary_vector`  | (B, n_secondary_sites) | float32 | Drug-induced secondary PTM change per site                |
+| `ptm_vector`              | (B, n_tokens)          | float32 | Flat PTM baseline occupancy (all types concatenated, 1.0 = wild-type) |
+| `delta_ptm_vector`        | (B, n_tokens)          | float32 | Flat drug-induced PTM change (all types concatenated, 0.0 = no drug)  |
 | `target_protein`          | (B,)                   | long    | Protein ID index (0, 1, 2, ...)                           |
 
 **Outputs**:
@@ -339,16 +337,17 @@ model = build_model_from_cfg(cfg)
 print(f"Model: {sum(p.numel() for p in model.parameters()):,} parameters")
 
 # 3. Prepare a single sample (example dimensions)
+#    All PTM types are concatenated into a single flat ptm_vector.
+#    E.g., 12 phospho + 12 glyco = 24 tokens total.
+n_tokens = 24  # from registry.n_tokens
 sample = {
-    "seq_emb": torch.randn(1, 100, 1280),  # ESM-2 protein embeddings
-    "struct_emb": torch.randn(1, 80, 512),  # GearNet structural embeddings
-    "drug_pooled": torch.randn(1, 384),  # ChemBERTa pooled
-    "drug_emb": torch.randn(1, 20, 384),  # ChemBERTa per-token
-    "ptm_vector": torch.ones(1, 12),  # Primary PTM baseline (12 sites)
-    "delta_ptm_vector": torch.zeros(1, 12),  # Drug-induced primary PTM change
-    "secondary_vector": torch.ones(1, 12),  # Secondary PTM baseline (12 sites)
-    "delta_secondary_vector": torch.zeros(1, 12),  # Drug-induced secondary PTM change
-    "target_protein": torch.tensor([0]),  # Protein ID (0=first protein)
+    "seq_emb": torch.randn(1, 100, 1280),       # ESM-2 protein embeddings
+    "struct_emb": torch.randn(1, 80, 512),       # GearNet structural embeddings
+    "drug_pooled": torch.randn(1, 384),           # ChemBERTa pooled
+    "drug_emb": torch.randn(1, 20, 384),          # ChemBERTa per-token
+    "ptm_vector": torch.ones(1, n_tokens),        # Flat PTM baseline (all types)
+    "delta_ptm_vector": torch.zeros(1, n_tokens), # Drug-induced PTM change (all types)
+    "target_protein": torch.tensor([0]),           # Protein ID (0=first protein)
 }
 
 # 4. Forward pass
@@ -361,8 +360,6 @@ with torch.no_grad():
         drug_embeddings=sample["drug_emb"],
         ptm_vector=sample["ptm_vector"],
         delta_ptm_vector=sample["delta_ptm_vector"],
-        secondary_vector=sample["secondary_vector"],
-        delta_secondary_vector=sample["delta_secondary_vector"],
         target_protein=sample["target_protein"],
     )
 

@@ -9,8 +9,8 @@
 ║  PART 1 — FEATURE & ARCHITECTURE ABLATIONS                                  ║
 ║    Symmetric across the two PTM channels (phospho ⊕ acetyl):               ║
 ║      no_ptm              — ALL PTM features zeroed (static baseline)        ║
-║      no_secondary        — phospho channel only (drops acetylation)         ║
-║      secondary_only      — acetyl channel only (drops phosphorylation)      ║
+║      no_acetyl        — phospho channel only (drops acetylation)         ║
+║      acetyl_only      — acetyl channel only (drops phosphorylation)      ║
 ║      no_drug             — drug embeddings zeroed                            ║
 ║      no_structure        — GearNet structural embeddings zeroed              ║
 ║      no_typed_attention  — PTM-BDL with MLP in place of typed self-attn    ║
@@ -202,15 +202,17 @@ ABLATION_CONFIGS = {
                     "Isolates purely dynamic pharmacodynamic signal.",
         color="#17becf", use_typed_attention=True, data_mode="delta_only",
     ),
-    "no_secondary": dict(
+    "no_acetyl": dict(
         label="Model B: No Acetyl",
-        description="Phospho channel active, acetyl channel zeroed.",
-        color="#9467bd", use_typed_attention=True, data_mode="no_secondary",
+        description="Phospho channel active, acetyl channel zeroed via zero_slot_range.",
+        color="#9467bd", use_typed_attention=True, data_mode="full",
+        zero_ptm_type="secondary",  # zero secondary slots via registry
     ),
-    "secondary_only": dict(
+    "acetyl_only": dict(
         label="Model C: Acetyl Only",
-        description="Acetyl channel active, phospho channel zeroed.",
-        color="#8c564b", use_typed_attention=True, data_mode="secondary_only",
+        description="Acetyl channel active, phospho channel zeroed via zero_slot_range.",
+        color="#8c564b", use_typed_attention=True, data_mode="full",
+        zero_ptm_type="primary",  # zero primary slots via registry
     ),
     "no_drug": dict(
         label="Model D: No Drug",
@@ -244,7 +246,7 @@ ABLATION_CONFIGS["measured_only"] = dict(
 
 ABLATION_ORDER = [
     "no_ptm", "baseline_only", "delta_only", "measured_only",
-    "no_secondary", "secondary_only",
+    "no_acetyl", "acetyl_only",
     "no_drug", "no_structure", "no_typed_attention", "full",
 ]
 
@@ -261,9 +263,16 @@ def train_ablation_model(mode_key, dataset_path, features_dir,
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    # KEY FIX: pass ablation_mode to ResistanceDataset
+    # Per-PTM-type ablation via zero_slot_range from registry
+    zero_slot_range = None
+    if "zero_ptm_type" in spec:
+        from src.ptm_bdl.registry import PTMTypeRegistry
+        registry = PTMTypeRegistry.from_config(cfg)
+        zero_slot_range = registry.get_ptm_type_slot_range(spec["zero_ptm_type"])
+
     dataset = ResistanceDataset(dataset_path, features_dir,
-                                ablation_mode=spec["data_mode"])
+                                ablation_mode=spec["data_mode"],
+                                zero_slot_range=zero_slot_range)
     train_loader, val_loader, test_loader = _make_loaders(
         dataset, train_idx, val_idx, test_idx)
 
@@ -348,9 +357,9 @@ def run_ablation_study(device):
 
     # Channel-level and modality-level marginal gains
     acetyl_marginal = (full_m.get("auroc", 0)
-                       - results["no_secondary"]["test_metrics"].get("auroc", 0))
+                       - results["no_acetyl"]["test_metrics"].get("auroc", 0))
     phospho_marginal = (full_m.get("auroc", 0)
-                        - results["secondary_only"]["test_metrics"].get("auroc", 0))
+                        - results["acetyl_only"]["test_metrics"].get("auroc", 0))
     drug_marginal = (full_m.get("auroc", 0)
                      - results["no_drug"]["test_metrics"].get("auroc", 0))
     struct_marginal = (full_m.get("auroc", 0)
@@ -442,11 +451,10 @@ def run_ablation_study(device):
 
 def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
     """
-    Integrated Gradients on the PTM-BDL phospho + acetyl input plane.
+    Integrated Gradients on the PTM-BDL flat input plane (phospho + acetyl).
 
-    HeLa has both phospho and acetyl (secondary) channels, so integrates along:
-      - ptm_vector / delta_ptm_vector (phospho)
-      - secondary_vector / delta_secondary_vector (acetyl)
+    Uses the flat ptm_vector (all PTM types concatenated) and delta_ptm_vector.
+    Slices into phospho (0:ptm_dim) and acetyl (ptm_dim:ptm_dim+sec_dim).
 
     Per-site importance = |grad_level × Δlevel| + |grad_delta × Δdelta|
 
@@ -456,10 +464,9 @@ def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
     dev = next(model.parameters()).device
     ptm_dim = dataset._ptm_dim
     sec_dim = dataset._secondary_dim
-    baseline_phospho = torch.ones(ptm_dim, device=dev)
-    baseline_dphospho = torch.zeros(ptm_dim, device=dev)
-    baseline_acetyl = torch.ones(sec_dim, device=dev) if sec_dim > 0 else torch.zeros(0, device=dev)
-    baseline_dacetyl = torch.zeros(sec_dim, device=dev) if sec_dim > 0 else torch.zeros(0, device=dev)
+    n_tokens = ptm_dim + sec_dim  # flat vector size
+    baseline_level = torch.ones(n_tokens, device=dev)
+    baseline_delta = torch.zeros(n_tokens, device=dev)
 
     sums_ph = {}
     sums_ac = {}
@@ -468,10 +475,8 @@ def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
 
     for idx in indices:
         sample = dataset[int(idx)]
-        actual_phospho = sample["ptm_vector"].to(dev)
-        actual_dphospho = sample["delta_ptm_vector"].to(dev)
-        actual_acetyl = sample["secondary_vector"].to(dev)
-        actual_dacetyl = sample["delta_secondary_vector"].to(dev)
+        actual_level = sample["ptm_vector"].to(dev)        # (n_tokens,) flat
+        actual_delta = sample["delta_ptm_vector"].to(dev)  # (n_tokens,) flat
         tp = sample["target_protein"].view(1).long().to(dev)
         pid = int(tp.item())
         protein = protein_names.get(pid, f"protein_{pid}")
@@ -487,63 +492,43 @@ def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
         drg_e = sample["drug_emb"].unsqueeze(0).to(dev)
         drg_p = sample["drug_pooled"].unsqueeze(0).to(dev)
 
-        grads_phospho = torch.zeros(ptm_dim, device=dev)
-        grads_dphospho = torch.zeros(ptm_dim, device=dev)
-        grads_acetyl = torch.zeros(sec_dim, device=dev) if sec_dim > 0 else torch.zeros(0, device=dev)
-        grads_dacetyl = torch.zeros(sec_dim, device=dev) if sec_dim > 0 else torch.zeros(0, device=dev)
+        grads_level = torch.zeros(n_tokens, device=dev)
+        grads_delta = torch.zeros(n_tokens, device=dev)
 
         for step in range(n_steps + 1):
             a = step / n_steps
-            iph = (baseline_phospho + a * (actual_phospho - baseline_phospho)
-                   ).unsqueeze(0).requires_grad_(True)
-            idph = (baseline_dphospho + a * (actual_dphospho - baseline_dphospho)
-                    ).unsqueeze(0).requires_grad_(True)
-
-            if sec_dim > 0:
-                iac = (baseline_acetyl + a * (actual_acetyl - baseline_acetyl)
-                       ).unsqueeze(0).requires_grad_(True)
-                idac = (baseline_dacetyl + a * (actual_dacetyl - baseline_dacetyl)
-                        ).unsqueeze(0).requires_grad_(True)
-            else:
-                iac = actual_acetyl.unsqueeze(0)
-                idac = actual_dacetyl.unsqueeze(0)
+            interp_level = (baseline_level + a * (actual_level - baseline_level)
+                           ).unsqueeze(0).requires_grad_(True)
+            interp_delta = (baseline_delta + a * (actual_delta - baseline_delta)
+                           ).unsqueeze(0).requires_grad_(True)
 
             _, resist_pred = model(
                 seq_embeddings=seq_e,
                 struct_embeddings=str_e,
                 drug_pooled=drg_p,
                 drug_embeddings=drg_e,
-                ptm_vector=iph,
-                delta_ptm_vector=idph,
-                secondary_vector=iac,
-                delta_secondary_vector=idac,
+                ptm_vector=interp_level,
+                delta_ptm_vector=interp_delta,
                 target_protein=tp,
             )
             model.zero_grad()
             resist_pred.backward()
-            if iph.grad is not None:
-                grads_phospho += iph.grad.squeeze(0).detach()
-            if idph.grad is not None:
-                grads_dphospho += idph.grad.squeeze(0).detach()
-            if sec_dim > 0:
-                if iac.grad is not None:
-                    grads_acetyl += iac.grad.squeeze(0).detach()
-                if idac.grad is not None:
-                    grads_dacetyl += idac.grad.squeeze(0).detach()
+            if interp_level.grad is not None:
+                grads_level += interp_level.grad.squeeze(0).detach()
+            if interp_delta.grad is not None:
+                grads_delta += interp_delta.grad.squeeze(0).detach()
 
+        # IG: |grad_level × Δlevel| + |grad_delta × Δdelta|
         n_s = n_steps + 1
-        delta_ph = actual_phospho - baseline_phospho
-        delta_dph = actual_dphospho - baseline_dphospho
-        attr_ph = (np.abs(((grads_phospho / n_s) * delta_ph).cpu().numpy())
-                   + np.abs(((grads_dphospho / n_s) * delta_dph).cpu().numpy()))
-        sums_ph[protein] += attr_ph
+        d_level = actual_level - baseline_level
+        d_delta = actual_delta - baseline_delta
+        attr = (np.abs(((grads_level / n_s) * d_level).cpu().numpy())
+                + np.abs(((grads_delta / n_s) * d_delta).cpu().numpy()))
 
+        # Slice into phospho (0:ptm_dim) and acetyl (ptm_dim:ptm_dim+sec_dim)
+        sums_ph[protein] += attr[:ptm_dim]
         if sec_dim > 0:
-            delta_ac = actual_acetyl - baseline_acetyl
-            delta_dac = actual_dacetyl - baseline_dacetyl
-            attr_ac = (np.abs(((grads_acetyl / n_s) * delta_ac).cpu().numpy())
-                       + np.abs(((grads_dacetyl / n_s) * delta_dac).cpu().numpy()))
-            sums_ac[protein] += attr_ac
+            sums_ac[protein] += attr[ptm_dim:ptm_dim + sec_dim]
 
     model.eval()
     out = {}

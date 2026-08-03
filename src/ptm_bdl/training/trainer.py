@@ -39,8 +39,6 @@ def train_epoch(model, loader, optimizer, scheduler, focal_loss,
             drug_embeddings=batch["drug_emb"],
             ptm_vector=batch["ptm_vector"],
             delta_ptm_vector=batch["delta_ptm_vector"],
-            secondary_vector=batch["secondary_vector"],
-            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
 
@@ -94,8 +92,6 @@ def validate(model, loader, focal_loss, lambda_reg, lambda_cls, device):
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                secondary_vector=batch["secondary_vector"],
-                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
             )
 
@@ -171,8 +167,6 @@ def compute_optimal_threshold(model, val_loader, device):
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                secondary_vector=batch["secondary_vector"],
-                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
             )
             all_probs.extend(

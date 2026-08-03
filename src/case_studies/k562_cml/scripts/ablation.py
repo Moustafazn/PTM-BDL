@@ -468,10 +468,6 @@ def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
             idph = (baseline_dphospho + a * (actual_dphospho - baseline_dphospho)
                     ).unsqueeze(0).requires_grad_(True)
 
-            # Pass empty secondary vectors (K562 has no secondary channel)
-            sec = sample["secondary_vector"].unsqueeze(0).to(dev)
-            dsec = sample["delta_secondary_vector"].unsqueeze(0).to(dev)
-
             _, resist_pred = model(
                 seq_embeddings=seq_e,
                 struct_embeddings=str_e,
@@ -479,8 +475,6 @@ def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
                 drug_embeddings=drg_e,
                 ptm_vector=iph,
                 delta_ptm_vector=idph,
-                secondary_vector=sec,
-                delta_secondary_vector=dsec,
                 target_protein=tp,
             )
             model.zero_grad()

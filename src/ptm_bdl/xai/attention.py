@@ -60,15 +60,9 @@ def compute_cross_type_attention(
         # Move all tensors to model device before calling encoder
         ptm_v = sample["ptm_vector"].unsqueeze(0).to(device)
         dptm_v = sample["delta_ptm_vector"].unsqueeze(0).to(device)
-        sec_v = sample["secondary_vector"].unsqueeze(0).to(device) if (
-            "secondary_vector" in sample and sample["secondary_vector"].numel() > 0
-        ) else torch.zeros(1, 0, device=device)
-        dsec_v = sample["delta_secondary_vector"].unsqueeze(0).to(device) if (
-            "delta_secondary_vector" in sample and sample["delta_secondary_vector"].numel() > 0
-        ) else torch.zeros(1, 0, device=device)
 
         attn = model.ptm_bdl.compute_attn_weights(
-            ptm_v, dptm_v, sec_v, dsec_v, tp,
+            ptm_v, dptm_v, tp,
         )
         sums[protein_name] += attn.squeeze(0).cpu().numpy()
         counts[protein_name] += 1

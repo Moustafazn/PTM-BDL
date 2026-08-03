@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+# ============================================================================
+# Code Ocean — Main Entry Point (run)
+# ============================================================================
+# This script is executed when a reviewer clicks "Reproducible Run".
+#
+# Code Ocean directory mapping:
+#   /code/    → source code (READ-ONLY at runtime)
+#   /data/    → uploaded datasets (READ-ONLY at runtime)
+#   /results/ → output directory (READ-WRITE — everything here is saved)
+#
+# KEY ISSUE: The code uses PROJECT_ROOT (computed from __file__) to find data
+# at PROJECT_ROOT/data/raw/, PROJECT_ROOT/data/features/, etc.
+# But Code Ocean puts data at /data/, NOT /code/data/.
+#
+# SOLUTION: Copy code to a writable workspace, then create data/ directory
+# inside it pointing to /data/. This way PROJECT_ROOT/data/ works correctly.
+# ============================================================================
+set -e
+
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║  PTM-BDL Framework — Code Ocean Reproducible Run               ║"
+echo "║  Multimodal Self-Attention with PTM Biological Dynamics Layer   ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "Started: $(date)"
+echo ""
+
+# ── Detect Python binary ─────────────────────────────────────────────────────
+if command -v python3.11 &>/dev/null; then
+    PYTHON=python3.11
+elif command -v python3 &>/dev/null; then
+    PYTHON=python3
+else
+    PYTHON=python
+fi
+echo "Using Python: $PYTHON ($($PYTHON --version 2>&1))"
+
+# ── Create writable workspace ────────────────────────────────────────────────
+# /code/ and /data/ are read-only at runtime. We copy code to a writable
+# workspace and create data/ inside it so PROJECT_ROOT/data/ paths resolve.
+WORKSPACE=/tmp/ptm-bdl-workspace
+rm -rf $WORKSPACE
+mkdir -p $WORKSPACE
+
+echo "Setting up workspace at $WORKSPACE ..."
+
+# Copy code to writable workspace (small: ~2 MB)
+# This makes PROJECT_ROOT = $WORKSPACE, and $WORKSPACE/data/ will have our data.
+cp -r /code/src $WORKSPACE/src
+cp -r /code/tests $WORKSPACE/tests
+cp /code/pyproject.toml $WORKSPACE/
+cp /code/Makefile $WORKSPACE/
+cp /code/README.md $WORKSPACE/
+cp /code/LICENSE $WORKSPACE/
+[ -f /code/CITATION.cff ] && cp /code/CITATION.cff $WORKSPACE/
+echo "  ✓ Copied source code to workspace"
+
+# ── Set up data directory ────────────────────────────────────────────────────
+# Scripts compute: PROJECT_ROOT / "data/raw", PROJECT_ROOT / "data/features", etc.
+# PROJECT_ROOT will be $WORKSPACE, so we need $WORKSPACE/data/ to contain
+# the uploaded data from Code Ocean's /data/ mount.
+mkdir -p $WORKSPACE/data
+
+# Raw data: symlink (read-only, large ~8 GB)
+if [ -d /data/raw ]; then
+    ln -s /data/raw $WORKSPACE/data/raw
+    echo "  ✓ Linked raw data ($(du -sh /data/raw 2>/dev/null | cut -f1))"
+fi
+
+# Features: symlink (read-only, ~33 MB)
+if [ -d /data/features ]; then
+    ln -s /data/features $WORKSPACE/data/features
+    echo "  ✓ Linked pre-computed features"
+else
+    mkdir -p $WORKSPACE/data/features
+    echo "  ○ Created empty features directory"
+fi
+
+# Processed data: copy (needs to be writable, ~56 MB)
+if [ -d /data/processed ]; then
+    cp -r /data/processed $WORKSPACE/data/processed
+    echo "  ✓ Copied processed data (writable)"
+else
+    mkdir -p $WORKSPACE/data/processed
+    echo "  ○ Created empty processed directory"
+fi
+
+# Models: copy if exists (needs to be writable for training, ~3 GB)
+if [ -d /data/models ]; then
+    cp -r /data/models $WORKSPACE/data/models
+    echo "  ✓ Copied model checkpoints (writable)"
+else
+    mkdir -p $WORKSPACE/data/models
+    echo "  ○ Created empty models directory"
+fi
+
+# Results directory
+mkdir -p $WORKSPACE/results
+
+# ── Set environment ──────────────────────────────────────────────────────────
+cd $WORKSPACE
+export PYTHONPATH="$WORKSPACE:$PYTHONPATH"
+export PYTHONUNBUFFERED=1
+
+echo ""
+echo "  Workspace ready:"
+echo "    PROJECT_ROOT = $WORKSPACE"
+echo "    data/raw     → $(readlink -f $WORKSPACE/data/raw 2>/dev/null || echo 'not found')"
+echo "    data/features→ $(readlink -f $WORKSPACE/data/features 2>/dev/null || echo 'not found')"
+echo "    data/processed = $WORKSPACE/data/processed"
+echo "    data/models  = $WORKSPACE/data/models"
+echo ""
+
+# ── Phase 1: Environment Verification ────────────────────────────────────────
+echo "════════════════════════════════════════════════════════════════════"
+echo "  PHASE 1: Environment Verification"
+echo "════════════════════════════════════════════════════════════════════"
+
+$PYTHON -c "
+import sys
+print(f'Python:       {sys.version}')
+import torch
+print(f'PyTorch:      {torch.__version__}')
+print(f'CUDA:         {torch.cuda.is_available()}')
+if torch.cuda.is_available():
+    print(f'GPU:          {torch.cuda.get_device_name(0)}')
+import transformers
+print(f'Transformers: {transformers.__version__}')
+import sklearn
+print(f'scikit-learn: {sklearn.__version__}')
+import pandas
+print(f'pandas:       {pandas.__version__}')
+import numpy
+print(f'NumPy:        {numpy.__version__}')
+try:
+    import torch_geometric
+    print(f'PyG:          {torch_geometric.__version__}')
+except ImportError:
+    print('PyG:          not available (using ESM-IF1 fallback)')
+try:
+    import esm
+    print(f'fair-esm:     available')
+except ImportError:
+    print('fair-esm:     not available')
+print()
+print('Environment OK ✓')
+"
+
+# ── Phase 2: Run Test Suite ──────────────────────────────────────────────────
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+echo "  PHASE 2: Running Test Suite"
+echo "════════════════════════════════════════════════════════════════════"
+
+$PYTHON -m pytest $WORKSPACE/tests/ -v --tb=short 2>&1 | tee /results/test_results.txt
+echo ""
+echo "  Tests complete ✓"
+
+# ── Phase 3: Detect available data and run pipeline ──────────────────────────
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+echo "  PHASE 3: Running Analysis Pipeline"
+echo "════════════════════════════════════════════════════════════════════"
+
+# Check what pre-computed data exists
+HAS_FEATURES=false
+HAS_RAW=false
+
+if [ -d $WORKSPACE/data/features/esm2 ] && [ "$(ls -A $WORKSPACE/data/features/esm2 2>/dev/null)" ]; then
+    HAS_FEATURES=true
+    echo "  ✓ Pre-computed features detected — skipping Steps 07-09"
+fi
+
+if [ -d $WORKSPACE/data/raw/gdsc ] && [ "$(ls -A $WORKSPACE/data/raw/gdsc 2>/dev/null)" ]; then
+    HAS_RAW=true
+    echo "  ✓ Raw data detected"
+fi
+
+echo ""
+
+# ── Run each case study ──────────────────────────────────────────────────────
+for CASE in egfr hela k562; do
+    case $CASE in
+        egfr) CS_NAME="EGFR/ERBB2 TKI Resistance" ; CS_DIR="egfr_erbb2_tki" ;;
+        hela) CS_NAME="HeLa/HDAC Inhibitors"       ; CS_DIR="hela_hdac"       ;;
+        k562) CS_NAME="K562/CML BCR-ABL"            ; CS_DIR="k562_cml"        ;;
+    esac
+
+    echo "────────────────────────────────────────────────────────────────"
+    echo "  Case Study: $CS_NAME"
+    echo "────────────────────────────────────────────────────────────────"
+
+    # Check if this case study has pre-trained models
+    CS_HAS_MODELS=false
+    if [ -d $WORKSPACE/data/models/$CS_DIR ] && [ "$(ls -A $WORKSPACE/data/models/$CS_DIR 2>/dev/null)" ]; then
+        CS_HAS_MODELS=true
+    fi
+
+    # Check if this case study has processed data
+    CS_HAS_DATA=false
+    if [ -d $WORKSPACE/data/processed/$CS_DIR ] && [ "$(ls -A $WORKSPACE/data/processed/$CS_DIR 2>/dev/null)" ]; then
+        CS_HAS_DATA=true
+    fi
+
+    if [ "$CS_HAS_MODELS" = true ]; then
+        echo "  → Running evaluation + XAI + baselines (pre-trained model available)"
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.evaluate 2>&1 | tee -a /results/${CASE}_evaluate.txt || true
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.explain 2>&1 | tee -a /results/${CASE}_explain.txt || true
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.ml_baselines 2>&1 | tee -a /results/${CASE}_baselines.txt || true
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.statistical_tests 2>&1 | tee -a /results/${CASE}_statistics.txt || true
+    elif [ "$CS_HAS_DATA" = true ]; then
+        echo "  → Running training + evaluation (processed data available)"
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.train 2>&1 | tee -a /results/${CASE}_train.txt || true
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.evaluate 2>&1 | tee -a /results/${CASE}_evaluate.txt || true
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.explain 2>&1 | tee -a /results/${CASE}_explain.txt || true
+    elif [ "$HAS_RAW" = true ]; then
+        echo "  → Running full pipeline (raw data available)"
+        make PYTHON=$PYTHON $CASE 2>&1 | tee -a /results/${CASE}_full_pipeline.txt || true
+    else
+        echo "  ⚠ No data found for $CS_NAME — skipping"
+        echo "    Upload data to Code Ocean's data/ folder to run this case study."
+    fi
+
+    echo ""
+done
+
+# ── Phase 4: Collect results ─────────────────────────────────────────────────
+echo "════════════════════════════════════════════════════════════════════"
+echo "  PHASE 4: Collecting Results"
+echo "════════════════════════════════════════════════════════════════════"
+
+# Copy workspace results to Code Ocean's /results/
+if [ -d $WORKSPACE/results ]; then
+    cp -r $WORKSPACE/results/* /results/ 2>/dev/null || true
+fi
+
+# Copy figures
+for CASE_DIR in egfr_erbb2_tki hela_hdac k562_cml; do
+    if [ -d $WORKSPACE/results/$CASE_DIR ]; then
+        mkdir -p /results/$CASE_DIR
+        cp -r $WORKSPACE/results/$CASE_DIR/* /results/$CASE_DIR/ 2>/dev/null || true
+    fi
+done
+
+echo ""
+echo "════════════════════════════════════════════════════════════════════"
+echo "  COMPLETE"
+echo "════════════════════════════════════════════════════════════════════"
+echo "Finished: $(date)"
+echo ""
+echo "Results saved to /results/"
+ls -la /results/

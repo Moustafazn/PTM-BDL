@@ -10,12 +10,12 @@
 ║  PART 1 — FEATURE & ARCHITECTURE ABLATIONS                                  ║
 ║    Symmetric across the two PTM channels (phospho ⊕ glyco):                 ║
 ║      no_ptm              — all PTM features zeroed (baseline)               ║
-║      no_secondary        — primary only (phospho); drops secondary (glyco)  ║
-║      secondary_only      — secondary only (glyco); drops primary (phospho)  ║
+║      no_glyco        — primary only (phospho); zeros glyco slot range   ║
+║      glyco_only      — secondary only (glyco); zeros phospho slot range ║
 ║      no_typed_attention  — PTM-BDL with MLP in place of typed self-attn     ║
 ║      full                — full PTM-BDL (= proposal Model C, phospho+glyco) ║
-║      (Level-1/Level-2 ablation arms have been retired — see                 ║
-║      PTM_Biological_Dynamics_Layer.md §1.2 Problem 3 + §8.1.)               ║
+║    Per-PTM-type ablation uses the registry's zero_slot_range to zero        ║
+║    specific PTM type slots in the flat ptm_vector.                          ║
 ║                                                                              ║
 ║  PART 2 — MULTI-SEED STABILITY (3 seeds × per-protein × per-mod-type IG)    ║
 ║    Per-mod-type IG buckets at the PTM-BDL token boundary:                   ║
@@ -214,15 +214,19 @@ ABLATION_CONFIGS = {
                     "Isolates purely dynamic pharmacodynamic signal.",
         color="#2ca02c", use_typed_attention=True, data_mode="delta_only",
     ),
-    "no_secondary": dict(
+    "no_glyco": dict(
         label="Model E: No secondary (glyco)",
-        description="Primary (phospho) channel active, secondary (glyco) channel zeroed.",
-        color="#9467bd", use_typed_attention=True, data_mode="no_secondary",
+        description="Primary (phospho) channel active, secondary (glyco) channel zeroed "
+                    "via zero_slot_range on the flat ptm_vector.",
+        color="#9467bd", use_typed_attention=True, data_mode="full",
+        zero_slot_range=(12, 24),  # zero glyco slots in flat vector
     ),
-    "secondary_only": dict(
+    "glyco_only": dict(
         label="Model F: Secondary only (glyco)",
-        description="Secondary (glyco) channel active, primary (phospho) channel zeroed.",
-        color="#8c564b", use_typed_attention=True, data_mode="secondary_only",
+        description="Secondary (glyco) channel active, primary (phospho) channel zeroed "
+                    "via zero_slot_range on the flat ptm_vector.",
+        color="#8c564b", use_typed_attention=True, data_mode="full",
+        zero_slot_range=(0, 12),  # zero phospho slots in flat vector
     ),
     "no_typed_attention": dict(
         label="Model G: No typed attention",
@@ -249,7 +253,7 @@ ABLATION_CONFIGS["measured_only"] = dict(
 
 ABLATION_ORDER = [
     "no_ptm", "baseline_only", "delta_only", "measured_only",
-    "no_secondary", "secondary_only", "no_typed_attention", "full",
+    "no_glyco", "glyco_only", "no_typed_attention", "full",
 ]
 
 
@@ -265,8 +269,10 @@ def train_ablation_model(mode_key, dataset_path, features_dir,
     torch.manual_seed(seed)
     np.random.seed(seed)
 
+    zero_slot_range = spec.get("zero_slot_range", None)
     dataset = ResistanceDataset(dataset_path, features_dir,
-                                ablation_mode=spec["data_mode"])
+                                ablation_mode=spec["data_mode"],
+                                zero_slot_range=zero_slot_range)
     train_loader, val_loader, test_loader = _make_loaders(
         dataset, train_idx, val_idx, test_idx)
 
@@ -350,9 +356,9 @@ def run_ablation_study(device):
 
     # Channel-level gains
     secondary_marginal = (full_m.get("auroc", 0)
-                          - results["no_secondary"]["test_metrics"].get("auroc", 0))
+                          - results["no_glyco"]["test_metrics"].get("auroc", 0))
     primary_marginal = (full_m.get("auroc", 0)
-                        - results["secondary_only"]["test_metrics"].get("auroc", 0))
+                        - results["glyco_only"]["test_metrics"].get("auroc", 0))
     typed_attn_marginal = (full_m.get("auroc", 0)
                            - results["no_typed_attention"]["test_metrics"].get("auroc", 0))
 
@@ -433,31 +439,23 @@ def run_ablation_study(device):
 
 def _run_ptm_bdl_ig(model, dataset, indices, df, n_steps: int = 20):
     """
-    Integrated Gradients on the PTM-BDL 24-token input plane.
+    Integrated Gradients on the PTM-BDL flat 24-token input plane.
 
-    Integrates along ALL 4 independent input channels simultaneously:
-      - ptm_vector      (phospho baseline level, baseline=1.0 = WT)
-      - delta_ptm_vector (drug-induced phospho change, baseline=0.0 = no drug)
-      - secondary_vector     (secondary PTM baseline level, baseline=1.0 = WT)
-      - delta_secondary_vector (drug-induced secondary PTM change, baseline=0.0 = no drug)
-
-    The model sees [level, delta, ratio] per token where ratio = delta/(level+ε).
-    Integrating along BOTH level AND delta captures the full input space:
-      - EGFR glyco level is constant (1.0) → level IG = 0, but delta_glyco
-        varies → delta IG captures the drug-induced glyco signal.
-      - ERBB2 delta_glyco is constant → delta IG = 0, but glyco level
-        varies → level IG captures the baseline glyco signal.
-      - Phospho: both level and delta vary for both proteins → both contribute.
+    Uses the flat ptm_vector (24 tokens: 12 phospho + 12 glyco) and
+    delta_ptm_vector (24 tokens).  Integrates along both level and delta
+    channels simultaneously.
 
     Per-site importance = |grad_level × Δlevel| + |grad_delta × Δdelta|
+
+    After integration, slices results into phospho (0:12) and glyco (12:24)
+    for per-protein, per-mod-type reporting.
 
     Returns dict with arrays per mod-type bucket, per protein.
     """
     model.train()  # need grads
-    baseline_phospho = torch.ones(12)  # WT phospho = no modulation
-    baseline_glyco = torch.ones(12)  # WT glyco = unit occupancy
-    baseline_dphospho = torch.zeros(12)  # no drug effect on phospho
-    baseline_dglyco = torch.zeros(12)  # no drug effect on glyco
+    n_tokens = 24  # 12 phospho + 12 glyco
+    baseline_level = torch.ones(n_tokens)   # WT = no modulation
+    baseline_delta = torch.zeros(n_tokens)  # no drug effect
 
     sums = {
         "EGFR_phospho": np.zeros(12), "EGFR_glyco": np.zeros(12),
@@ -467,10 +465,8 @@ def _run_ptm_bdl_ig(model, dataset, indices, df, n_steps: int = 20):
 
     for idx in indices:
         sample = dataset[int(idx)]
-        actual_phospho = sample["ptm_vector"]
-        actual_glyco = sample["secondary_vector"]
-        actual_dphospho = sample["delta_ptm_vector"]
-        actual_dglyco = sample["delta_secondary_vector"]
+        actual_level = sample["ptm_vector"]        # (24,) flat
+        actual_delta = sample["delta_ptm_vector"]  # (24,) flat
         tp = sample["target_protein"].view(1).long()
         protein = "ERBB2" if tp.item() == PROTEIN_ID_ERBB2 else "EGFR"
         counts[protein] += 1
@@ -480,64 +476,43 @@ def _run_ptm_bdl_ig(model, dataset, indices, df, n_steps: int = 20):
         drg_e = sample["drug_emb"].unsqueeze(0)
         drg_p = sample["drug_pooled"].unsqueeze(0)
 
-        # Gradient accumulators for all 4 input channels
-        grads_phospho = torch.zeros(12)  # ∂out/∂level_phospho
-        grads_glyco = torch.zeros(12)  # ∂out/∂level_glyco
-        grads_dphospho = torch.zeros(12)  # ∂out/∂delta_phospho
-        grads_dglyco = torch.zeros(12)  # ∂out/∂delta_glyco
+        # Gradient accumulators for level and delta channels
+        grads_level = torch.zeros(n_tokens)
+        grads_delta = torch.zeros(n_tokens)
 
         for step in range(n_steps + 1):
             a = step / n_steps
-            # Interpolate ALL 4 inputs from baseline → actual
-            iph = (baseline_phospho + a * (actual_phospho - baseline_phospho)
-                   ).unsqueeze(0).requires_grad_(True)
-            igl = (baseline_glyco + a * (actual_glyco - baseline_glyco)
-                   ).unsqueeze(0).requires_grad_(True)
-            idph = (baseline_dphospho + a * (actual_dphospho - baseline_dphospho)
-                    ).unsqueeze(0).requires_grad_(True)
-            idgl = (baseline_dglyco + a * (actual_dglyco - baseline_dglyco)
-                    ).unsqueeze(0).requires_grad_(True)
+            interp_level = (baseline_level + a * (actual_level - baseline_level)
+                           ).unsqueeze(0).requires_grad_(True)
+            interp_delta = (baseline_delta + a * (actual_delta - baseline_delta)
+                           ).unsqueeze(0).requires_grad_(True)
 
             _, resist_pred = model(
                 seq_embeddings=seq_e,
                 struct_embeddings=str_e,
                 drug_pooled=drg_p,
                 drug_embeddings=drg_e,
-                ptm_vector=iph,
-                delta_ptm_vector=idph,
-                secondary_vector=igl,
-                delta_secondary_vector=idgl,
+                ptm_vector=interp_level,
+                delta_ptm_vector=interp_delta,
                 target_protein=tp,
             )
             model.zero_grad()
             resist_pred.backward()
-            if iph.grad is not None:
-                grads_phospho += iph.grad.squeeze(0).detach()
-            if igl.grad is not None:
-                grads_glyco += igl.grad.squeeze(0).detach()
-            if idph.grad is not None:
-                grads_dphospho += idph.grad.squeeze(0).detach()
-            if idgl.grad is not None:
-                grads_dglyco += idgl.grad.squeeze(0).detach()
+            if interp_level.grad is not None:
+                grads_level += interp_level.grad.squeeze(0).detach()
+            if interp_delta.grad is not None:
+                grads_delta += interp_delta.grad.squeeze(0).detach()
 
-        # IG formula: per-site importance = |avg_grad_level × Δlevel| + |avg_grad_delta × Δdelta|
-        # This captures contributions from BOTH independent input channels.
-        delta_ph = actual_phospho - baseline_phospho
-        delta_gl = actual_glyco - baseline_glyco
-        delta_dph = actual_dphospho - baseline_dphospho
-        delta_dgl = actual_dglyco - baseline_dglyco
+        # IG formula: |avg_grad_level × Δlevel| + |avg_grad_delta × Δdelta|
+        d_level = actual_level - baseline_level
+        d_delta = actual_delta - baseline_delta
+        n_s = n_steps + 1
+        attr = (np.abs(((grads_level / n_s) * d_level).numpy())
+                + np.abs(((grads_delta / n_s) * d_delta).numpy()))
 
-        attr_ph_level = np.abs(((grads_phospho / (n_steps + 1)) * delta_ph).numpy())
-        attr_ph_delta = np.abs(((grads_dphospho / (n_steps + 1)) * delta_dph).numpy())
-        attr_gl_level = np.abs(((grads_glyco / (n_steps + 1)) * delta_gl).numpy())
-        attr_gl_delta = np.abs(((grads_dglyco / (n_steps + 1)) * delta_dgl).numpy())
-
-        # Combined per-site importance (level + delta contributions)
-        attr_ph = attr_ph_level + attr_ph_delta
-        attr_gl = attr_gl_level + attr_gl_delta
-
-        sums[f"{protein}_phospho"] += attr_ph
-        sums[f"{protein}_glyco"] += attr_gl
+        # Slice into phospho (0:12) and glyco (12:24)
+        sums[f"{protein}_phospho"] += attr[:12]
+        sums[f"{protein}_glyco"] += attr[12:24]
 
     model.eval()
     out = {}

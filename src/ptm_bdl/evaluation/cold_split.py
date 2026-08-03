@@ -158,8 +158,6 @@ def run_leave_one_drug_out(
                     drug_embeddings=batch_dev.get("drug_emb"),
                     ptm_vector=batch_dev["ptm_vector"],
                     delta_ptm_vector=batch_dev["delta_ptm_vector"],
-                    secondary_vector=batch_dev.get("secondary_vector"),
-                    delta_secondary_vector=batch_dev.get("delta_secondary_vector"),
                     target_protein=batch_dev["target_protein"],
                 )
                 all_ic50_pred.append(ic50_pred.cpu().numpy())
@@ -299,8 +297,6 @@ def run_cold_cell_evaluation(
                     drug_embeddings=batch_dev.get("drug_emb"),
                     ptm_vector=batch_dev["ptm_vector"],
                     delta_ptm_vector=batch_dev["delta_ptm_vector"],
-                    secondary_vector=batch_dev.get("secondary_vector"),
-                    delta_secondary_vector=batch_dev.get("delta_secondary_vector"),
                     target_protein=batch_dev["target_protein"],
                 )
                 all_ic50_pred.append(ic50_pred.cpu().numpy())

@@ -184,8 +184,6 @@ def _evaluate_fold(model, dataset, test_idx, device):
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                secondary_vector=batch["secondary_vector"],
-                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
             )
             probs.extend(torch.sigmoid(resist_pred).cpu().numpy().flatten().tolist())
@@ -201,12 +199,9 @@ def _run_ig_per_mod_type(model, dataset, indices, n_steps: int = 20):
     """
     Integrated Gradients on the PTM-BDL 24-token input plane.
 
-    Integrates along ALL 4 independent input channels simultaneously
-    (revised 2026-07-03 — matches step11b/step13 4-channel IG):
-      - ptm_vector       (phospho level, baseline=1.0 = WT)
-      - delta_ptm_vector  (drug-induced phospho change, baseline=0.0)
-      - secondary_vector      (secondary PTM level, baseline=1.0 = WT)
-      - delta_secondary_vector (drug-induced secondary PTM change, baseline=0.0)
+    Uses the flat ptm_vector (n_tokens = 12 phospho + 12 glyco) and
+    delta_ptm_vector. Integrates along both level and delta channels,
+    then slices into phospho (0:12) and glyco (12:24).
 
     Per-site importance = |grad_level × Δlevel| + |grad_delta × Δdelta|
 
@@ -217,10 +212,9 @@ def _run_ig_per_mod_type(model, dataset, indices, n_steps: int = 20):
       }
     """
     model.train()
-    baseline_ph = torch.ones(12)  # WT phospho level
-    baseline_gl = torch.ones(12)  # WT glyco level
-    baseline_dph = torch.zeros(12)  # no drug effect on phospho
-    baseline_dgl = torch.zeros(12)  # no drug effect on glyco
+    n_tokens = 24  # 12 phospho + 12 glyco
+    baseline_level = torch.ones(n_tokens)
+    baseline_delta = torch.zeros(n_tokens)
 
     sums = {
         ("EGFR", "phospho"): np.zeros(12), ("EGFR", "glyco"): np.zeros(12),
@@ -230,10 +224,8 @@ def _run_ig_per_mod_type(model, dataset, indices, n_steps: int = 20):
 
     for idx in indices:
         sample = dataset[int(idx)]
-        a_ph = sample["ptm_vector"]
-        a_gl = sample["secondary_vector"]
-        a_dph = sample["delta_ptm_vector"]
-        a_dgl = sample["delta_secondary_vector"]
+        actual_level = sample["ptm_vector"]        # (24,) flat
+        actual_delta = sample["delta_ptm_vector"]  # (24,) flat
         tp = sample["target_protein"].view(1).long()
         gene = "ERBB2" if tp.item() == PROTEIN_ID_ERBB2 else "EGFR"
         counts[gene] += 1
@@ -243,50 +235,40 @@ def _run_ig_per_mod_type(model, dataset, indices, n_steps: int = 20):
         drg_e = sample["drug_emb"].unsqueeze(0)
         drg_p = sample["drug_pooled"].unsqueeze(0)
 
-        # Gradient accumulators for all 4 channels
-        g_ph = torch.zeros(12)  # ∂out/∂level_phospho
-        g_gl = torch.zeros(12)  # ∂out/∂level_glyco
-        g_dph = torch.zeros(12)  # ∂out/∂delta_phospho
-        g_dgl = torch.zeros(12)  # ∂out/∂delta_glyco
+        grads_level = torch.zeros(n_tokens)
+        grads_delta = torch.zeros(n_tokens)
 
         for step in range(n_steps + 1):
             a = step / n_steps
-            # Interpolate ALL 4 inputs from baseline → actual
-            iph = (baseline_ph + a * (a_ph - baseline_ph)).unsqueeze(0).requires_grad_(True)
-            igl = (baseline_gl + a * (a_gl - baseline_gl)).unsqueeze(0).requires_grad_(True)
-            idph = (baseline_dph + a * (a_dph - baseline_dph)).unsqueeze(0).requires_grad_(True)
-            idgl = (baseline_dgl + a * (a_dgl - baseline_dgl)).unsqueeze(0).requires_grad_(True)
+            interp_level = (baseline_level + a * (actual_level - baseline_level)
+                           ).unsqueeze(0).requires_grad_(True)
+            interp_delta = (baseline_delta + a * (actual_delta - baseline_delta)
+                           ).unsqueeze(0).requires_grad_(True)
 
             _, resist_pred = model(
                 seq_embeddings=seq_e,
                 struct_embeddings=str_e,
                 drug_pooled=drg_p,
                 drug_embeddings=drg_e,
-                ptm_vector=iph,
-                delta_ptm_vector=idph,
-                secondary_vector=igl,
-                delta_secondary_vector=idgl,
+                ptm_vector=interp_level,
+                delta_ptm_vector=interp_delta,
                 target_protein=tp,
             )
             model.zero_grad()
             resist_pred.backward()
-            if iph.grad is not None:
-                g_ph += iph.grad.squeeze(0).detach()
-            if igl.grad is not None:
-                g_gl += igl.grad.squeeze(0).detach()
-            if idph.grad is not None:
-                g_dph += idph.grad.squeeze(0).detach()
-            if idgl.grad is not None:
-                g_dgl += idgl.grad.squeeze(0).detach()
+            if interp_level.grad is not None:
+                grads_level += interp_level.grad.squeeze(0).detach()
+            if interp_delta.grad is not None:
+                grads_delta += interp_delta.grad.squeeze(0).detach()
 
         # IG: |grad_level × Δlevel| + |grad_delta × Δdelta| per site
         n_s = n_steps + 1
-        attr_ph = (np.abs(((g_ph / n_s) * (a_ph - baseline_ph)).numpy())
-                   + np.abs(((g_dph / n_s) * (a_dph - baseline_dph)).numpy()))
-        attr_gl = (np.abs(((g_gl / n_s) * (a_gl - baseline_gl)).numpy())
-                   + np.abs(((g_dgl / n_s) * (a_dgl - baseline_dgl)).numpy()))
-        sums[(gene, "phospho")] += attr_ph
-        sums[(gene, "glyco")] += attr_gl
+        d_level = actual_level - baseline_level
+        d_delta = actual_delta - baseline_delta
+        attr = (np.abs(((grads_level / n_s) * d_level).numpy())
+                + np.abs(((grads_delta / n_s) * d_delta).numpy()))
+        sums[(gene, "phospho")] += attr[:12]
+        sums[(gene, "glyco")] += attr[12:24]
 
     model.eval()
     out = {}

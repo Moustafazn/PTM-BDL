@@ -282,8 +282,6 @@ def _predict_single(model, sample):
             drug_embeddings=batch["drug_emb"],
             ptm_vector=batch["ptm_vector"],
             delta_ptm_vector=batch["delta_ptm_vector"],
-            secondary_vector=batch["secondary_vector"],
-            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
     return float(ic50_pred.item()), float(torch.sigmoid(resist_logits).item())
@@ -339,7 +337,7 @@ def group_stats(samples):
 # PART 2: Integrated Gradients on PTM-BDL inputs (phospho + glyco)
 # ──────────────────────────────────────────────────────────────────────────────
 # We compute IG of P(resistance) AND ln(IC50) w.r.t. both phospho_vector and
-# secondary_vector simultaneously per sample, with baseline = ones (the WT-
+# the flat ptm_vector simultaneously per sample, with baseline = ones (the WT-
 # equivalent occupancy used by all other modules in the project).
 #
 # Reference: Sundararajan, Taly & Yan, "Axiomatic Attribution for Deep
@@ -359,8 +357,7 @@ def compute_ptm_bdl_ig(model, dataset, indices, n_steps: int = 30):
     ALL 4 PTM-BDL input channels simultaneously:
       - ptm_vector       (phospho baseline level, baseline = 1.0 = WT)
       - delta_ptm_vector  (drug-induced phospho change, baseline = 0.0 = no drug)
-      - secondary_vector      (secondary PTM baseline level, baseline = 1.0 = WT)
-      - delta_secondary_vector (drug-induced secondary PTM change, baseline = 0.0 = no drug)
+      (All PTM types are concatenated into a single flat ptm_vector.)
 
     The model sees [level, delta, ratio] per token where ratio = delta/(level+ε).
     Integrating along BOTH level AND delta captures the full input space:
@@ -386,115 +383,77 @@ def compute_ptm_bdl_ig(model, dataset, indices, n_steps: int = 30):
     print(f"\n  Per-sample PTM-BDL Integrated Gradients on {len(indices)} samples "
           f"({n_steps} steps, 4-channel integration)")
     out = {}
-    baseline_ph = torch.ones(12)  # WT phospho = no modulation
-    baseline_gl = torch.ones(12)  # WT glyco = unit occupancy
-    baseline_dph = torch.zeros(12)  # no drug effect on phospho
-    baseline_dgl = torch.zeros(12)  # no drug effect on glyco
+    n_tokens = 24  # 12 phospho + 12 glyco (flat vector)
+    baseline_level = torch.ones(n_tokens)   # WT = no modulation
+    baseline_delta = torch.zeros(n_tokens)  # no drug effect
 
     for i, idx in enumerate(indices):
         sample = dataset[int(idx)]
-        actual_ph = sample["ptm_vector"]
-        actual_gl = sample["secondary_vector"]
-        actual_dph = sample["delta_ptm_vector"]
-        actual_dgl = sample["delta_secondary_vector"]
+        actual_level = sample["ptm_vector"]        # (24,) flat
+        actual_delta = sample["delta_ptm_vector"]  # (24,) flat
         tp = sample["target_protein"].view(1).long()
         seq_e = sample["seq_emb"].unsqueeze(0)
         str_e = sample["struct_emb"].unsqueeze(0)
         drg_e = sample["drug_emb"].unsqueeze(0)
         drg_p = sample["drug_pooled"].unsqueeze(0)
 
-        # Accumulators for gradient integration (4 channels × 2 targets)
-        ic50_g_ph = torch.zeros(12)  # ∂IC50/∂level_phospho
-        ic50_g_gl = torch.zeros(12)  # ∂IC50/∂level_glyco
-        ic50_g_dph = torch.zeros(12)  # ∂IC50/∂delta_phospho
-        ic50_g_dgl = torch.zeros(12)  # ∂IC50/∂delta_glyco
-        res_g_ph = torch.zeros(12)  # ∂resist/∂level_phospho
-        res_g_gl = torch.zeros(12)  # ∂resist/∂level_glyco
-        res_g_dph = torch.zeros(12)  # ∂resist/∂delta_phospho
-        res_g_dgl = torch.zeros(12)  # ∂resist/∂delta_glyco
+        # Accumulators for gradient integration (2 channels × 2 targets)
+        ic50_g_level = torch.zeros(n_tokens)
+        ic50_g_delta = torch.zeros(n_tokens)
+        res_g_level = torch.zeros(n_tokens)
+        res_g_delta = torch.zeros(n_tokens)
 
         for step in range(n_steps + 1):
             a = step / n_steps
-            # Interpolate ALL 4 inputs from baseline → actual
-            iph = (baseline_ph + a * (actual_ph - baseline_ph)
-                   ).unsqueeze(0).requires_grad_(True)
-            igl = (baseline_gl + a * (actual_gl - baseline_gl)
-                   ).unsqueeze(0).requires_grad_(True)
-            idph = (baseline_dph + a * (actual_dph - baseline_dph)
-                    ).unsqueeze(0).requires_grad_(True)
-            idgl = (baseline_dgl + a * (actual_dgl - baseline_dgl)
-                    ).unsqueeze(0).requires_grad_(True)
+            interp_level = (baseline_level + a * (actual_level - baseline_level)
+                           ).unsqueeze(0).requires_grad_(True)
+            interp_delta = (baseline_delta + a * (actual_delta - baseline_delta)
+                           ).unsqueeze(0).requires_grad_(True)
 
             ic50_pred, resist_pred = model(
                 seq_embeddings=seq_e,
                 struct_embeddings=str_e,
                 drug_pooled=drg_p,
                 drug_embeddings=drg_e,
-                ptm_vector=iph,
-                delta_ptm_vector=idph,
-                secondary_vector=igl,
-                delta_secondary_vector=idgl,
+                ptm_vector=interp_level,
+                delta_ptm_vector=interp_delta,
                 target_protein=tp,
             )
-            # IC50 gradients (all 4 channels)
+            # IC50 gradients
             model.zero_grad()
             ic50_pred.backward(retain_graph=True)
-            if iph.grad is not None:
-                ic50_g_ph += iph.grad.squeeze(0).detach()
-                iph.grad.zero_()
-            if igl.grad is not None:
-                ic50_g_gl += igl.grad.squeeze(0).detach()
-                igl.grad.zero_()
-            if idph.grad is not None:
-                ic50_g_dph += idph.grad.squeeze(0).detach()
-                idph.grad.zero_()
-            if idgl.grad is not None:
-                ic50_g_dgl += idgl.grad.squeeze(0).detach()
-                idgl.grad.zero_()
-            # Resistance gradients (all 4 channels)
+            if interp_level.grad is not None:
+                ic50_g_level += interp_level.grad.squeeze(0).detach()
+                interp_level.grad.zero_()
+            if interp_delta.grad is not None:
+                ic50_g_delta += interp_delta.grad.squeeze(0).detach()
+                interp_delta.grad.zero_()
+            # Resistance gradients
             model.zero_grad()
             resist_pred.backward()
-            if iph.grad is not None:
-                res_g_ph += iph.grad.squeeze(0).detach()
-            if igl.grad is not None:
-                res_g_gl += igl.grad.squeeze(0).detach()
-            if idph.grad is not None:
-                res_g_dph += idph.grad.squeeze(0).detach()
-            if idgl.grad is not None:
-                res_g_dgl += idgl.grad.squeeze(0).detach()
+            if interp_level.grad is not None:
+                res_g_level += interp_level.grad.squeeze(0).detach()
+            if interp_delta.grad is not None:
+                res_g_delta += interp_delta.grad.squeeze(0).detach()
 
         # IG formula: per-site = |avg_grad_level × Δlevel| + |avg_grad_delta × Δdelta|
-        # abs() applied per component BEFORE summing — ensures both level and
-        # delta contributions are counted as importance regardless of sign.
-        delta_ph = actual_ph - baseline_ph
-        delta_gl = actual_gl - baseline_gl
-        delta_dph = actual_dph - baseline_dph  # = actual_dph (since baseline = 0)
-        delta_dgl = actual_dgl - baseline_dgl  # = actual_dgl (since baseline = 0)
+        d_level = actual_level - baseline_level
+        d_delta = actual_delta - baseline_delta
         n_s = n_steps + 1
 
-        # Combined per-site importance (level + delta contributions)
-        # Each component uses abs() independently, then summed.
-        ic50_ph_level = np.abs(((ic50_g_ph / n_s) * delta_ph).numpy())
-        ic50_ph_delta = np.abs(((ic50_g_dph / n_s) * delta_dph).numpy())
-        ic50_gl_level = np.abs(((ic50_g_gl / n_s) * delta_gl).numpy())
-        ic50_gl_delta = np.abs(((ic50_g_dgl / n_s) * delta_dgl).numpy())
-        res_ph_level = np.abs(((res_g_ph / n_s) * delta_ph).numpy())
-        res_ph_delta = np.abs(((res_g_dph / n_s) * delta_dph).numpy())
-        res_gl_level = np.abs(((res_g_gl / n_s) * delta_gl).numpy())
-        res_gl_delta = np.abs(((res_g_dgl / n_s) * delta_dgl).numpy())
+        ic50_attr = (np.abs(((ic50_g_level / n_s) * d_level).numpy())
+                     + np.abs(((ic50_g_delta / n_s) * d_delta).numpy()))
+        res_attr = (np.abs(((res_g_level / n_s) * d_level).numpy())
+                    + np.abs(((res_g_delta / n_s) * d_delta).numpy()))
 
-        ic50_ph = ic50_ph_level + ic50_ph_delta
-        ic50_gl = ic50_gl_level + ic50_gl_delta
-        res_ph = res_ph_level + res_ph_delta
-        res_gl = res_gl_level + res_gl_delta
-
+        # Slice into phospho (0:12) and glyco (12:24)
         out[int(idx)] = {
-            "ic50_attr_phospho": ic50_ph.tolist(),
-            "ic50_attr_glyco": ic50_gl.tolist(),
-            "resist_attr_phospho": res_ph.tolist(),
-            "resist_attr_glyco": res_gl.tolist(),
-            "phospho_values": actual_ph.numpy().tolist(),
-            "glyco_values": actual_gl.numpy().tolist(),
+            "ic50_attr_phospho": ic50_attr[:12].tolist(),
+            "ic50_attr_glyco": ic50_attr[12:24].tolist(),
+            "resist_attr_phospho": res_attr[:12].tolist(),
+            "resist_attr_glyco": res_attr[12:24].tolist(),
+            "phospho_values": actual_level[:12].numpy().tolist(),
+            "glyco_values": actual_level[12:24].numpy().tolist(),
             "target_protein": int(tp.item()),
         }
         if (i + 1) % 10 == 0 or i == 0:
@@ -621,8 +580,6 @@ def compute_cross_type_attention(model, dataset, indices):
         attn = model.ptm_bdl.compute_attn_weights(
             sample["ptm_vector"].unsqueeze(0),
             sample["delta_ptm_vector"].unsqueeze(0),
-            sample["secondary_vector"].unsqueeze(0),
-            sample["delta_secondary_vector"].unsqueeze(0),
             tp,
         )
         sums[protein] += attn.squeeze(0).cpu().numpy()
@@ -965,8 +922,6 @@ def explain():
         attn = model.ptm_bdl.compute_attn_weights(
             sample["ptm_vector"].unsqueeze(0),
             sample["delta_ptm_vector"].unsqueeze(0),
-            sample["secondary_vector"].unsqueeze(0),
-            sample["delta_secondary_vector"].unsqueeze(0),
             tp,
         ).squeeze(0).cpu().numpy()
 

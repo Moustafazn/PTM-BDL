@@ -35,8 +35,6 @@ def collect_predictions(model, loader):
                 drug_embeddings=batch_dev.get("drug_emb"),
                 ptm_vector=batch_dev["ptm_vector"],
                 delta_ptm_vector=batch_dev["delta_ptm_vector"],
-                secondary_vector=batch_dev["secondary_vector"],
-                delta_secondary_vector=batch_dev["delta_secondary_vector"],
                 target_protein=batch_dev["target_protein"],
             )
             all_ic50_pred.extend(ic50_pred.squeeze(-1).cpu().numpy().tolist())

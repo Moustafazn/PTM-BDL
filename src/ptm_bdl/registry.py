@@ -177,8 +177,8 @@ class PTMTypeRegistry:
         Convention (legacy format):
           • The first ``*_sites`` key group → primary channel
             (``ptm_vector``, CSV columns ``ptm_{residue}``)
-          • Any additional ``*_sites`` key group → secondary channel
-            (``secondary_vector``, CSV columns ``{type}_slot*``)
+          • Any additional ``*_sites`` key group → appended to ptm_vector
+            (CSV columns ``{type}_slot*``)
         """
         ptm_cfg = cfg.get("ptm", {})
         ptm_dim = ptm_cfg.get("ptm_dim", 12)
