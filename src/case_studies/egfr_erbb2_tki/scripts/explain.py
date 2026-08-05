@@ -117,6 +117,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 # ── Import from framework packages ──────────────────────────────────────────
 from src.ptm_bdl.data.dataset import ResistanceDataset
 from src.ptm_bdl.training.factory import build_model_from_cfg
+from src.ptm_bdl.training import load_checkpoint
 
 # ── Import from case study biology ──────────────────────────────────────────
 from src.case_studies.egfr_erbb2_tki.biology import (
@@ -245,12 +246,11 @@ def load_model_and_data():
     model = build_model_from_cfg(cfg).to(device)
     model_path = MODEL_DIR / "best_model.pt"
     if model_path.exists():
-        model.load_state_dict(torch.load(model_path, map_location=device,
-                                         weights_only=True))
+        load_checkpoint(model, model_path, device)
         print(f"  ✓ Loaded trained model: {model_path.name}")
     else:
         print(f"  ⚠ No trained model — using random weights (demo only)")
-    model.eval()
+        model.eval()
     return model, dataset, test_idx, device
 
 

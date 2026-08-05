@@ -53,7 +53,7 @@ from sklearn.metrics import (
 
 from src.ptm_bdl.data import ResistanceDataset, collate_fn
 from src.ptm_bdl.evaluation.evaluator import collect_predictions, compute_full_metrics
-from src.ptm_bdl.training import build_model_from_cfg
+from src.ptm_bdl.training import build_model_from_cfg, load_checkpoint
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 from src.ptm_bdl.config import load_config
@@ -84,12 +84,11 @@ def load_model(device):
     model = build_model_from_cfg(cfg).to(device)
     model_path = MODEL_DIR / "best_model.pt"
     if model_path.exists():
-        model.load_state_dict(torch.load(model_path, map_location=device,
-                                         weights_only=True))
+        load_checkpoint(model, model_path, device)
         print(f"  ✓ Loaded model: {model_path.name}")
     else:
         print(f"  ⚠ No trained model found! Using random weights for demo.")
-    model.eval()
+        model.eval()
     return model
 
 

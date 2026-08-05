@@ -54,6 +54,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 from src.ptm_bdl.data.dataset import ResistanceDataset
 from src.ptm_bdl.training.factory import build_model_from_cfg
+from src.ptm_bdl.training import load_checkpoint, resolve_device
 from src.ptm_bdl.xai.integrated_gradients import compute_ig_batch
 from src.ptm_bdl.xai.attention import compute_cross_type_attention
 from src.ptm_bdl.config import load_config
@@ -406,12 +407,11 @@ def explain():
     model = build_model_from_cfg(cfg).to(device)
     model_path = MODEL_DIR / "best_model.pt"
     if model_path.exists():
-        model.load_state_dict(torch.load(model_path, map_location=device,
-                                         weights_only=True))
+        load_checkpoint(model, model_path, device)
         print(f"  ✓ Loaded: {model_path.name}")
     else:
         print(f"  ⚠ No trained model — using random weights (demo)")
-    model.eval()
+        model.eval()
 
     # ── PART 1: Predictions + group analysis ─────────────────────────────
     print("\n  PART 1: Per-sample predictions + group analysis")

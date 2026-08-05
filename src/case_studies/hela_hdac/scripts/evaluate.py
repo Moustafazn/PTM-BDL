@@ -60,7 +60,7 @@ from scipy.stats import pearsonr, spearmanr
 
 from src.ptm_bdl.data import ResistanceDataset, collate_fn
 from src.ptm_bdl.evaluation.evaluator import collect_predictions, compute_full_metrics, load_threshold, make_eval_loader
-from src.ptm_bdl.training import build_model_from_cfg
+from src.ptm_bdl.training import build_model_from_cfg, load_checkpoint, resolve_device
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 from src.ptm_bdl.config import load_config
@@ -91,16 +91,7 @@ def evaluate():
     print(f"║  PTM types: phosphorylation + acetylation (NEW)            ║")
     print(f"╚══════════════════════════════════════════════════════════════╝")
 
-    device_str = cfg["training"]["device"]
-    if device_str == "auto":
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            device = torch.device("mps")
-        else:
-            device = torch.device("cpu")
-    else:
-        device = torch.device(device_str)
+    device = resolve_device(cfg)
     print(f"  Device: {device}")
 
     dataset_path = (PROJECT_ROOT / cfg["paths"]["processed_data"]
@@ -114,8 +105,7 @@ def evaluate():
     test_idx = np.array(split["test_idx"])
 
     model = build_model_from_cfg(cfg).to(device)
-    model.load_state_dict(torch.load(MODEL_DIR / "best_model.pt", map_location=device))
-    model.eval()
+    load_checkpoint(model, MODEL_DIR / "best_model.pt", device)
 
     # Helper — build a DataLoader from index array (same pattern as egfr)
     batch_size = cfg["model"]["batch_size"]

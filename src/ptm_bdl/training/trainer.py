@@ -1,14 +1,114 @@
-"""Training and validation loops for the PTM-BDL model."""
+"""Training, validation, and checkpoint utilities for the PTM-BDL model."""
 
 from __future__ import annotations
 
 import gc
+from pathlib import Path
+from typing import Union
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch.utils.data import WeightedRandomSampler
 
 from src.ptm_bdl.training.metrics import compute_metrics
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Checkpoint I/O
+# ───────────────────────────────────────────────────────────────────────────────
+# Centralised save/load so every consumer (train, evaluate, explain, ablation,
+# loclo, cross-dataset) uses weights_only=True and consistent conventions.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def save_checkpoint(model: torch.nn.Module, path: Union[str, Path]) -> Path:
+    """Save model ``state_dict`` to *path*.
+
+    Creates parent directories if needed.  Returns the resolved ``Path``.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), path)
+    return path
+
+
+def load_checkpoint(
+    model: torch.nn.Module,
+    path: Union[str, Path],
+    device: Union[str, torch.device] = "cpu",
+) -> torch.nn.Module:
+    """Load a ``state_dict`` into *model* from *path*.
+
+    Always uses ``weights_only=True`` (PyTorch ≥ 2.6 default) to prevent
+    arbitrary code execution from untrusted checkpoint files.
+
+    Args:
+        model:  An already-constructed model (e.g. from ``build_model_from_cfg``).
+        path:   Path to the ``.pt`` checkpoint file.
+        device: Map location for ``torch.load``.
+
+    Returns:
+        The model with loaded weights, in ``eval`` mode.
+    """
+    path = Path(path)
+    model.load_state_dict(
+        torch.load(path, map_location=device, weights_only=True)
+    )
+    model.eval()
+    return model
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Device resolution
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def resolve_device(cfg: dict) -> torch.device:
+    """Resolve the compute device from config ``training.device``.
+
+    Accepts ``"auto"`` (tries CUDA → MPS → CPU), ``"cuda"``, ``"mps"``,
+    or ``"cpu"``.  This avoids repeating the 6-line detection block in
+    every case study script.
+    """
+    device_str = cfg.get("training", {}).get("device", "auto")
+    if device_str == "auto":
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return torch.device("mps")
+        return torch.device("cpu")
+    return torch.device(device_str)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Class-balanced sampling
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def create_balanced_sampler(
+    dataset,
+    train_idx: np.ndarray,
+) -> WeightedRandomSampler:
+    """Build a ``WeightedRandomSampler`` that balances resistant vs sensitive.
+
+    Drug-resistance datasets are typically highly imbalanced (e.g. 87%
+    resistant in EGFR).  Without balancing, the model predicts the
+    majority class for everything and appears broken (BAcc ≈ 0.50).
+
+    Args:
+        dataset:   A ``ResistanceDataset`` with ``.df`` attribute.
+        train_idx: Array of training set indices.
+
+    Returns:
+        A ``WeightedRandomSampler`` ready for ``DataLoader(sampler=...)``.
+    """
+    train_labels = dataset.df["resistance_label"].values[train_idx]
+    class_counts = np.bincount(train_labels.astype(int))
+    class_weights = 1.0 / np.maximum(class_counts, 1)
+    sample_weights = class_weights[train_labels.astype(int)]
+    return WeightedRandomSampler(
+        weights=torch.from_numpy(sample_weights).float(),
+        num_samples=len(train_idx),
+        replacement=True,
+    )
 
 
 def _clear_mps_cache():

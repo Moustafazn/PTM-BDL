@@ -64,7 +64,7 @@ PTM-BDL-Framework/
 │   ├── registry.py                     # Config-driven PTM type/subtype system
 │   ├── model/                          # encoder, ablation, static, fusion, predictor
 │   ├── data/                           # dataset, collate, splits
-│   ├── training/                       # loss, trainer, metrics, factory, threshold
+│   ├── training/                       # loss, trainer, metrics, factory, checkpoint, device, sampler
 │   ├── evaluation/                     # evaluator, baselines, statistical, loclo, loader
 │   └── xai/                            # integrated_gradients, attention, homology
 │
@@ -75,12 +75,12 @@ PTM-BDL-Framework/
 │   │   ├── data_pipeline/              # Steps 01-06: data acquisition + harmonization
 │   │   ├── features/                   # Steps 07-09: ESM-2, GearNet, ChemBERTa
 │   │   └── scripts/                    # Steps 10-15: train, evaluate, explain, benchmark
-│   ├── hela_hdac/                      # CS2: HeLa/HDAC Inhibitors (in progress)
+│   ├── hela_hdac/                      # CS2: HeLa/HDAC Inhibitors (complete)
 │   │   ├── biology.py                  # HDAC/HAT drug classifications + PDB structures
 │   │   ├── data_pipeline/              # Steps 01-06 (phospho + NEW acetyl_K PTM type)
 │   │   ├── features/                   # Steps 07-09: ESM-2, GearNet, ChemBERTa
 │   │   └── scripts/                    # train, evaluate, explain, ablation, crossval, etc.
-│   └── k562_cml/                       # CS3: K562/CML BCR-ABL (in progress)
+│   └── k562_cml/                       # CS3: K562/CML BCR-ABL (complete)
 │       ├── biology.py                  # BCR-ABL substrates + TKI/chemo classifications
 │       ├── data_pipeline/              # Steps 01-06 (5 drugs: 2 TKI + 3 chemo)
 │       ├── features/                   # Steps 07-09: ESM-2, GearNet, ChemBERTa
@@ -385,11 +385,26 @@ print(f"Val AUROC: {val_metrics['auroc']:.3f}, BAcc: {val_metrics['balanced_acc'
 The framework provides shared utilities that ensure consistent behavior across all case studies:
 
 ```python
-from src.ptm_bdl.training import compute_optimal_threshold
+from src.ptm_bdl.training import (
+    compute_optimal_threshold,
+    save_checkpoint, load_checkpoint,
+    resolve_device, create_balanced_sampler,
+)
 from src.ptm_bdl.evaluation.evaluator import (
     collect_predictions, compute_full_metrics,
     load_threshold, make_eval_loader,
 )
+
+# ── Device selection (auto-detects CUDA > MPS > CPU) ──
+device = resolve_device(cfg)
+
+# ── Class-balanced sampling (prevents majority-class collapse) ──
+sampler = create_balanced_sampler(dataset, train_idx)
+train_loader = DataLoader(train_set, batch_size=16, sampler=sampler, collate_fn=collate_fn)
+
+# ── Save/load checkpoints (always uses weights_only=True) ──
+save_checkpoint(model, "data/models/best_model.pt")
+load_checkpoint(model, "data/models/best_model.pt", device)  # loads + sets eval mode
 
 # After training — compute optimal classification threshold (Youden's J)
 # Finds the probability threshold that maximizes (sensitivity + specificity)
