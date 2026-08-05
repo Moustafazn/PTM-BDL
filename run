@@ -204,16 +204,16 @@ for CASE in egfr hela k562; do
     fi
 
     if [ "$CS_HAS_MODELS" = true ]; then
-        echo "  → Running evaluation + XAI + baselines (pre-trained model available)"
-        $PYTHON -m src.case_studies.$CS_DIR.scripts.evaluate 2>&1 | tee -a /results/${CASE}_evaluate.txt || true
+        echo "  → Running XAI + evaluation + baselines (pre-trained model available)"
         $PYTHON -m src.case_studies.$CS_DIR.scripts.explain 2>&1 | tee -a /results/${CASE}_explain.txt || true
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.evaluate 2>&1 | tee -a /results/${CASE}_evaluate.txt || true
         $PYTHON -m src.case_studies.$CS_DIR.scripts.ml_baselines 2>&1 | tee -a /results/${CASE}_baselines.txt || true
         $PYTHON -m src.case_studies.$CS_DIR.scripts.statistical_tests 2>&1 | tee -a /results/${CASE}_statistics.txt || true
     elif [ "$CS_HAS_DATA" = true ]; then
-        echo "  → Running training + evaluation (processed data available)"
+        echo "  → Running training + XAI + evaluation (processed data available)"
         $PYTHON -m src.case_studies.$CS_DIR.scripts.train 2>&1 | tee -a /results/${CASE}_train.txt || true
-        $PYTHON -m src.case_studies.$CS_DIR.scripts.evaluate 2>&1 | tee -a /results/${CASE}_evaluate.txt || true
         $PYTHON -m src.case_studies.$CS_DIR.scripts.explain 2>&1 | tee -a /results/${CASE}_explain.txt || true
+        $PYTHON -m src.case_studies.$CS_DIR.scripts.evaluate 2>&1 | tee -a /results/${CASE}_evaluate.txt || true
     elif [ "$HAS_RAW" = true ]; then
         echo "  → Running full pipeline (raw data available)"
         make PYTHON=$PYTHON $CASE 2>&1 | tee -a /results/${CASE}_full_pipeline.txt || true
