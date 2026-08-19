@@ -8,7 +8,7 @@ Trains the PTM-BDL model on the EGFR/ERBB2 TKI resistance dataset.
   - 2 PTM types: phospho (Y/S/T subtypes) + glyco (N subtype)
   - 24 PTM tokens per sample (12 phospho + 12 glyco)
 
-Uses the framework packages:
+Uses the tool packages:
   ptm_bdl.training  — train_epoch, validate, FocalLoss, build_model_from_cfg
   ptm_bdl.data      — ResistanceDataset, collate_fn, create_stratified_splits
 """
@@ -42,7 +42,7 @@ def train():
     """Two-stage training pipeline with class-balanced sampling."""
     print("╔══════════════════════════════════════════════════════════════╗")
     print("║  EGFR/ERBB2 TKI Case Study — Training                     ║")
-    print("║  Framework: ptm_bdl.training + ptm_bdl.data                ║")
+    print("║  Tool: ptm_bdl.training + ptm_bdl.data                ║")
     print("╚══════════════════════════════════════════════════════════════╝")
 
     seed = cfg["training"]["seed"]

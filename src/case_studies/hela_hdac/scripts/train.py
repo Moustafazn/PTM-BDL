@@ -6,9 +6,9 @@ Trains the PTM-BDL model on the HeLa HDAC inhibitor dataset.
   - Cell line: HeLa (cervical carcinoma)
   - 6 drugs: Vorinostat, Romidepsin, CUDC-101, A485, A486, Curcumin
   - 2 PTM types: phosphorylation (S/T/Y) + acetylation (K) — NEW PTM type
-  - Proves PTM-BDL handles acetylation with zero framework code changes
+  - Proves PTM-BDL handles acetylation with zero tool code changes
 
-Uses the same framework packages as EGFR case study:
+Uses the same tool packages as EGFR case study:
   ptm_bdl.training  — train_epoch, validate, FocalLoss, build_model_from_cfg
   ptm_bdl.data      — ResistanceDataset, collate_fn, create_stratified_splits
 """
@@ -42,7 +42,7 @@ def train():
     """Training pipeline for HeLa/HDAC case study."""
     print(f"╔══════════════════════════════════════════════════════════════╗")
     print(f"║  {CASE_STUDY} — Training                                   ║")
-    print(f"║  Framework: ptm_bdl.training + ptm_bdl.data                ║")
+    print(f"║  tool: ptm_bdl.training + ptm_bdl.data                ║")
     print(f"╚══════════════════════════════════════════════════════════════╝")
 
     seed = cfg["training"]["seed"]

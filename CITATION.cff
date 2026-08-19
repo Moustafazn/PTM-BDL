@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 title: >-
   Multimodal Self-Attention with PTM Biological Dynamics Layer:
-  A PTM Framework for Drug Response Prediction
+  A PTM tool for Drug Response Prediction
 message: >-
   If you use this software, please cite it using the
   metadata from this file.
@@ -12,7 +12,7 @@ authors:
   - given-names: Aboul Ella
     family-names: Hassanien
 repository-code: >-
-  https://github.com/Moustafazn/PTM-BDL-Framework
+  https://github.com/Moustafazn/PTM-BDL
 license: MIT
 date-released: "2026-07-01"
 keywords:

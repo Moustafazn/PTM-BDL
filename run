@@ -19,7 +19,7 @@
 set -e
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  PTM-BDL Framework — Code Ocean Reproducible Run               ║"
+echo "║  PTM-BDL Tool — Code Ocean Reproducible Run               ║"
 echo "║  Multimodal Self-Attention with PTM Biological Dynamics Layer   ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""

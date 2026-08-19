@@ -1,5 +1,5 @@
 # ============================================================================
-# requirements.txt — PTM-BDL Framework
+# requirements.txt — PTM-BDL tool
 # ============================================================================
 # Install:
 #   pip install -r requirements.txt

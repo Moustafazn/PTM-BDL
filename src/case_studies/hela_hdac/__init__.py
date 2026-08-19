@@ -15,7 +15,7 @@ Key biological rationale:
   - HDAC inhibitors block deacetylation → acetylation INCREASES at histone marks
   - This is fundamentally different from TKIs (which block phosphorylation)
   - Top acetylation targets: EP300, CREBBP, HIST1H4A, NCL, histones
-  - Proves PTM-BDL handles a NEW PTM type (acetyl_K) with ZERO framework changes
+  - Proves PTM-BDL handles a NEW PTM type (acetyl_K) with ZERO tool changes
 
 What this case study proves for generalization:
   1. NEW PTM type works: acetylation tokens attend to phospho tokens → cross-type

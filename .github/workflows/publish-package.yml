@@ -1,4 +1,4 @@
-# Manually-triggered workflow to build and publish ptm-bdl-framework to PyPI
+# Manually-triggered workflow to build and publish ptm-bdl to PyPI
 # using Trusted Publishing (OIDC). No API tokens needed.
 
 name: Build & Publish Package

@@ -1,5 +1,5 @@
 """
-ML baseline framework for benchmarking PTM-BDL against traditional methods.
+ML baseline tool for benchmarking PTM-BDL against traditional methods.
 
 Trains and evaluates RF, XGBoost, Ridge, and ElasticNet on the same features
 and splits as the PTM-BDL model. Uses concatenated pooled embeddings as input

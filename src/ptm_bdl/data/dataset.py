@@ -34,7 +34,7 @@ class ResistanceDataset(Dataset):
       • ``*_slot*`` columns → additional PTM site values (positional naming)
       Both groups are concatenated into a single vector in discovery order.
 
-    Ablation modes (framework-level):
+    Ablation modes (tool-level):
       • ``"full"``          — all features active
       • ``"no_ptm"``        — zero ALL PTM features (static-only baseline)
       • ``"no_drug"``       — zero drug embeddings (drug_emb + drug_pooled)

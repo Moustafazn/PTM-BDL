@@ -14,7 +14,7 @@ The pipeline automatically detects what data is available and runs the appropria
 
 | Output | Description |
 |--------|-------------|
-| `test_results.txt` | Framework test suite results (verifies code correctness) |
+| `test_results.txt` | tool test suite results (verifies code correctness) |
 | `egfr_evaluate.txt` | EGFR/ERBB2 TKI resistance — evaluation metrics (AUROC, BAcc, R², etc.) |
 | `hela_evaluate.txt` | HeLa/HDAC inhibitors — evaluation metrics |
 | `k562_evaluate.txt` | K562/CML BCR-ABL — evaluation metrics |
@@ -85,9 +85,9 @@ data/
 ```bibtex
 @software{zein2026ptmbdl,
   title  = {Multimodal Self-Attention with {PTM} Biological Dynamics Layer:
-            A {PTM} Framework for Drug Response Prediction},
+            A {PTM} tool for Drug Response Prediction},
   author = {Zein, Moustafa and Hassanien, Aboul Ella},
   year   = {2026},
-  url    = {https://github.com/Moustafazn/PTM-BDL-Framework},
+  url    = {https://github.com/Moustafazn/PTM-BDL},
 }
 ```

@@ -2,7 +2,7 @@
 # CONFIGURATION — HeLa / HDAC Inhibitor Epigenetic Drug Response
 # ============================================================================
 # Case Study 2: Proves PTM-BDL handles acetylation (NEW PTM type) with
-# zero framework code changes.
+# zero tool code changes.
 #
 # CANCER FOCUS: Cervical carcinoma (HeLa, HPV18+)
 # DRUG MECHANISM: HDAC inhibitors (epigenetic) — NOT kinase inhibitors
@@ -138,7 +138,7 @@ drugs:
     mechanism: "Natural polyphenol HDAC/HAT modulator"
 
 # ── Per-Protein PTM Site Schemas ───────────────────────────────────────────
-# Following EGFR framework: each target protein has defined PTM sites
+# Following EGFR tool: each target protein has defined PTM sites
 # with UniProt positions. The PTM-BDL self-attention layer processes
 # these as per-site tokens.
 ptm:

@@ -1,5 +1,5 @@
 """
-Leave-One-Class-Line-Out (LOCLO) generalization framework.
+Leave-One-Class-Line-Out (LOCLO) generalization tool.
 
 Tests whether the model generalizes to held-out groups of samples (e.g.,
 cell lines grouped by mutation class, amplification status, or tissue type).

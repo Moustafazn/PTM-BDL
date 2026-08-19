@@ -1,9 +1,9 @@
-# PTM-BDL Framework
+# PTM-BDL Tool
 
-**A Post-Translational Modification Framework for Drug Response Prediction**
+**PTM-BDL: interpretable drug response prediction from per-site post-translational modification codes**
 
-A config-driven, extensible deep learning framework that treats post-translational modifications (PTMs) as first-class
-typed tokens in a self-attention architecture. The framework is protein-agnostic, PTM-type-agnostic, and drug-agnostic —
+A config-driven, extensible deep learning tool that treats post-translational modifications (PTMs) as first-class
+typed tokens in a self-attention architecture. The tool is protein-agnostic, PTM-type-agnostic, and drug-agnostic —
 adding a new protein, PTM type, or drug requires only configuration changes.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -15,7 +15,7 @@ adding a new protein, PTM type, or drug requires only configuration changes.
 ## Architecture
 
 <p align="center">
-  <img src="docs/figures/architecture.png" alt="PTM-BDL Framework Architecture" width="100%">
+  <img src="docs/figures/architecture.png" alt="PTM-BDL Tool Architecture" width="100%">
 </p>
 <p align="center">
   <em><strong>Figure 1.</strong> PTM-BDL multimodal architecture. <strong>Stage 1 (Static)</strong>: Protein sequence (ESM-2), 3D structure (GearNet), and drug chemistry (ChemBERTa) are projected into a shared space and processed by cross-modal self-attention to produce S<sub>rep</sub>. <strong>Stage 2 (Dynamic)</strong>: PTM sites are encoded as typed tokens [level, δ, ratio] with type-gated projection and inter-site self-attention to produce P<sub>rep</sub>. <strong>Fusion</strong>: Bilinear late fusion S<sub>rep</sub> ⊙ P<sub>rep</sub> feeds prediction heads for IC50 regression and resistance classification.</em>
@@ -50,17 +50,17 @@ tokens, enabling the model to discover inter-site signaling dependencies and cro
 | **HeLa / HDAC Inhibitors** |  ✅ Complete | HDAC1, EP300 | phospho (S/T/Y) + **acetyl (K)** | 6 drugs | Cervical (pan-cancer) | 93K summaries |
 | **K562 / CML (BCR-ABL)** | ✅ Complete | ABL1, CRKL, STAT5A | phospho (S/T/Y) | 5 drugs (TKI + chemo) | CML (leukemia) | 78K summaries |
 
-Each case study proves the framework generalizes to a different drug mechanism, cancer type, and PTM type — with **zero
-framework code changes**.
+Each case study proves the tool generalizes to a different drug mechanism, cancer type, and PTM type — with **zero
+tool code changes**.
 
 ---
 
 ## Project Structure
 
 ```
-PTM-BDL-Framework/
+PTM-BDL/
 │
-├── src/ptm_bdl/                        # CORE FRAMEWORK (protein-agnostic)
+├── src/ptm_bdl/                        # CORE tool (protein-agnostic)
 │   ├── registry.py                     # Config-driven PTM type/subtype system
 │   ├── model/                          # encoder, ablation, static, fusion, predictor
 │   ├── data/                           # dataset, collate, splits
@@ -106,8 +106,8 @@ PTM-BDL-Framework/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Moustafazn/PTM-BDL-Framework.git
-cd PTM-BDL-Framework
+git clone https://github.com/Moustafazn/PTM-BDL.git
+cd PTM-BDL
 ```
 
 ### 2. Create Virtual Environment (Python 3.11)
@@ -294,9 +294,9 @@ After publication, PTM-BDL can be installed and used in any Python project:
 ### Installation
 
 ```bash
-pip install ptm-bdl-framework
+pip install ptm-bdl
 # or from source:
-pip install git+https://github.com/Moustafazn/PTM-BDL-Framework.git
+pip install git+https://github.com/Moustafazn/PTM-BDL.git
 ```
 
 ### Model Input/Output Specification
@@ -328,7 +328,7 @@ import yaml
 from src.ptm_bdl.training import build_model_from_cfg, FocalLoss, train_epoch, validate
 from src.ptm_bdl.evaluation.evaluator import collect_predictions, compute_full_metrics
 
-# 1. Load config (framework + case study settings)
+# 1. Load config (tool + case study settings)
 with open("config/config.yaml") as f:
     cfg = yaml.safe_load(f)
 
@@ -380,9 +380,9 @@ val_metrics = validate(model, val_loader, focal_loss, 1.0, 2.0, "cpu")
 print(f"Val AUROC: {val_metrics['auroc']:.3f}, BAcc: {val_metrics['balanced_acc']:.3f}")
 ```
 
-### Framework Utilities — Training & Evaluation
+### tool Utilities — Training & Evaluation
 
-The framework provides shared utilities that ensure consistent behavior across all case studies:
+The tool provides shared utilities that ensure consistent behavior across all case studies:
 
 ```python
 from src.ptm_bdl.training import (
@@ -494,26 +494,26 @@ model = build_model_from_cfg(my_config)
 # ... (same API as above)
 ```
 
-**The framework requires ZERO code changes to support your biological system.**
+**The tool requires ZERO code changes to support your biological system.**
 
 ---
 
 ## Configuration
 
-Framework-level settings are in `src/ptm_bdl/default_config.yaml` (shipped with the package).
+tool-level settings are in `src/ptm_bdl/default_config.yaml` (shipped with the package).
 Case-study-specific settings are in each case study's `config.yaml`.
 
 ```python
 from src.ptm_bdl.config import load_config
 
-# Load merged config (base framework + EGFR/ERBB2 case study)
+# Load merged config (base tool + EGFR/ERBB2 case study)
 cfg = load_config(case_study="egfr_erbb2_tki")
 
-# Load base framework config only
+# Load base tool config only
 cfg = load_config(case_study=None)
 ```
 
-**Framework defaults** (`src/ptm_bdl/default_config.yaml`):
+**tool defaults** (`src/ptm_bdl/default_config.yaml`):
 
 ```yaml
 model:
@@ -587,11 +587,10 @@ python -m pytest tests/ -v --tb=short
 
 ```bibtex
 @software{zein2026ptmbdl,
-  title  = {Multimodal Self-Attention with {PTM} Biological Dynamics Layer:
-            A {PTM} Framework for Drug Response Prediction},
+  title  = {PTM-BDL: interpretable drug response prediction from per-site post-translational modification codes},
   author = {Zein, Moustafa and Hassanien, Aboul Ella},
   year   = {2026},
-  url    = {https://github.com/Moustafazn/PTM-BDL-Framework},
+  url    = {https://github.com/Moustafazn/PTM-BDL},
 }
 ```
 

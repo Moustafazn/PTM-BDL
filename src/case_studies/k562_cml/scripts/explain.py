@@ -231,7 +231,7 @@ def _get_protein_site_labels(protein_name: str) -> list:
 
 def compute_per_protein_ig(model, dataset, indices, n_steps=30):
     """
-    Compute IG via the framework module, then produce per-protein site rankings
+    Compute IG via the tool module, then produce per-protein site rankings
     with PTM site labels resolved PER PROTEIN from config.
     """
     print(f"\n  Computing per-protein IG on {len(indices)} samples ({n_steps} steps)...")

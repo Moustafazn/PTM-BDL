@@ -8,7 +8,7 @@ Trains the PTM-BDL model on the K562 CML dataset.
   - PTM type: phosphorylation (S/T/Y) only — different kinase system (ABL vs EGFR)
   - Proves PTM-BDL generalizes to hematological cancer + mixed drug mechanisms
 
-Uses the same framework packages as EGFR case study — ZERO code changes.
+Uses the same tool packages as EGFR case study — ZERO code changes.
 """
 import json
 import shutil
@@ -40,7 +40,7 @@ def train():
     """Training pipeline for K562/CML case study."""
     print(f"╔══════════════════════════════════════════════════════════════╗")
     print(f"║  {CASE_STUDY} — Training                                   ║")
-    print(f"║  Framework: ptm_bdl.training + ptm_bdl.data                ║")
+    print(f"║  tool: ptm_bdl.training + ptm_bdl.data                ║")
     print(f"╚══════════════════════════════════════════════════════════════╝")
 
     seed = cfg["training"]["seed"]

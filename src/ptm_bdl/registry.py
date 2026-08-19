@@ -204,7 +204,7 @@ class PTMTypeRegistry:
         # Discover all unique *_sites keys across proteins in config order.
         # Convention: the FIRST *_sites key → primary channel.
         #             ALL subsequent *_sites keys → secondary channel.
-        # This makes the framework truly generic — any PTM type (phospho,
+        # This makes the tool truly generic — any PTM type (phospho,
         # glyco, acetyl, ubiquitin, etc.) can be primary or secondary
         # depending on config order.
         all_site_keys_ordered: list[str] = []

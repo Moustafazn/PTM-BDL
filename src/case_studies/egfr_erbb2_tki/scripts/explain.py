@@ -114,7 +114,7 @@ import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
-# ── Import from framework packages ──────────────────────────────────────────
+# ── Import from tool packages ──────────────────────────────────────────
 from src.ptm_bdl.data.dataset import ResistanceDataset
 from src.ptm_bdl.training.factory import build_model_from_cfg
 from src.ptm_bdl.training import load_checkpoint

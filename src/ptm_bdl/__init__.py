@@ -1,5 +1,5 @@
 """
-PTM-BDL Framework — Config-driven extensible framework for PTM-based drug response prediction.
+PTM-BDL tool — Config-driven extensible tool for PTM-based drug response prediction.
 
 Public API:
     PTMTypeRegistry     — Dynamic PTM type/subtype system built from config

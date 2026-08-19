@@ -1,1 +1,1 @@
-"""HeLa/HDAC case study entry point scripts — train, evaluate, explain via framework packages."""
+"""HeLa/HDAC case study entry point scripts — train, evaluate, explain via tool packages."""

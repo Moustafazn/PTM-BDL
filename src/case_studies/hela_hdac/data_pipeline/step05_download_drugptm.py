@@ -2,7 +2,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  STEP 05 — Process Drug-PTM Data: HeLa / HDAC Inhibitor Case Study         ║
-║  (Phosphorylation + Acetylation — NEW PTM type for the framework)           ║
+║  (Phosphorylation + Acetylation — NEW PTM type for the tool)           ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║                                                                              ║
 ║  PURPOSE:                                                                    ║
@@ -14,9 +14,9 @@
 ║       cell-line dataset with GDSC IC50 labels (~900 cell lines).            ║
 ║                                                                              ║
 ║    This is the FIRST case study to use acetylation (acetyl_K) — a NEW       ║
-║    PTM type that the framework has never seen. If PTM-BDL processes         ║
+║    PTM type that the tool has never seen. If PTM-BDL processes         ║
 ║    acetylation tokens alongside phospho tokens without code changes,        ║
-║    it proves the unified framework claim.                                   ║
+║    it proves the unified tool claim.                                   ║
 ║                                                                              ║
 ║  DATA SOURCE:                                                                ║
 ║    DrugPTM-Bench — Badkul et al., 2026 (PMID 30394195)                     ║

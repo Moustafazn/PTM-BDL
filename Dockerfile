@@ -25,7 +25,7 @@ FROM ${BASE_IMAGE}
 
 LABEL maintainer="Moustafa Zein"
 LABEL description="Multimodal Self-Attention with PTM Biological Dynamics Layer for Drug Response Prediction"
-LABEL org.opencontainers.image.source="https://github.com/Moustafazn/PTM-BDL-Framework"
+LABEL org.opencontainers.image.source="https://github.com/Moustafazn/PTM-BDL"
 
 # ── System Dependencies ──────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \

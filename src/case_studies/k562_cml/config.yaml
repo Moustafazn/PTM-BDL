@@ -127,7 +127,7 @@ drugs:
     mechanism: "Antifolate (DHFR inhibitor)"
 
 # ── Per-Protein PTM Site Schemas ───────────────────────────────────────────
-# Following EGFR framework: each target protein has defined PTM sites.
+# Following EGFR tool: each target protein has defined PTM sites.
 # The PTM-BDL self-attention layer processes these as per-site tokens.
 ptm:
   ptm_dim: 12
