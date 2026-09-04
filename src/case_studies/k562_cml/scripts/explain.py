@@ -54,6 +54,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 from src.ptm_bdl.data.dataset import ResistanceDataset
 from src.ptm_bdl.training.factory import build_model_from_cfg
+from src.ptm_bdl.training import load_checkpoint, resolve_device
 from src.ptm_bdl.xai.integrated_gradients import compute_ig_batch
 from src.ptm_bdl.xai.attention import compute_cross_type_attention
 from src.ptm_bdl.config import load_config
@@ -129,8 +130,6 @@ def _predict_single(model, sample, device=None):
             drug_embeddings=batch["drug_emb"],
             ptm_vector=batch["ptm_vector"],
             delta_ptm_vector=batch["delta_ptm_vector"],
-            secondary_vector=batch["secondary_vector"],
-            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
     return float(ic50_pred.item()), float(torch.sigmoid(resist_logits).item())
@@ -232,7 +231,7 @@ def _get_protein_site_labels(protein_name: str) -> list:
 
 def compute_per_protein_ig(model, dataset, indices, n_steps=30):
     """
-    Compute IG via the framework module, then produce per-protein site rankings
+    Compute IG via the tool module, then produce per-protein site rankings
     with PTM site labels resolved PER PROTEIN from config.
     """
     print(f"\n  Computing per-protein IG on {len(indices)} samples ({n_steps} steps)...")
@@ -408,12 +407,11 @@ def explain():
     model = build_model_from_cfg(cfg).to(device)
     model_path = MODEL_DIR / "best_model.pt"
     if model_path.exists():
-        model.load_state_dict(torch.load(model_path, map_location=device,
-                                         weights_only=True))
+        load_checkpoint(model, model_path, device)
         print(f"  ✓ Loaded: {model_path.name}")
     else:
         print(f"  ⚠ No trained model — using random weights (demo)")
-    model.eval()
+        model.eval()
 
     # ── PART 1: Predictions + group analysis ─────────────────────────────
     print("\n  PART 1: Per-sample predictions + group analysis")

@@ -45,8 +45,12 @@ import torch
 from torch.utils.data import Subset, DataLoader, WeightedRandomSampler
 
 from src.ptm_bdl.data import ResistanceDataset, collate_fn
+from src.ptm_bdl.evaluation.cold_split import make_inner_validation_split
 from src.ptm_bdl.evaluation.evaluator import collect_predictions, compute_full_metrics
-from src.ptm_bdl.training import FocalLoss, train_epoch, validate, build_model_from_cfg
+from src.ptm_bdl.training import (
+    FocalLoss, train_epoch, validate, build_model_from_cfg,
+    compute_optimal_threshold,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 from src.ptm_bdl.config import load_config
@@ -75,11 +79,15 @@ def assign_tissue_groups(df: pd.DataFrame) -> np.ndarray:
 
 
 def train_loclo_fold(dataset, train_idx, test_idx, fold_name, cfg, device):
-    """Train a fresh model on train_idx, evaluate on test_idx."""
-    print(f"    Training fold '{fold_name}': "
-          f"train={len(train_idx)}, test={len(test_idx)}")
+    """Train on an inner fit split and evaluate once on the held-out group."""
+    train_idx, validation_idx = make_inner_validation_split(
+        dataset, train_idx, seed=SEED,
+    )
+    print(f"    Training fold '{fold_name}': train={len(train_idx)}, "
+          f"validation={len(validation_idx)}, test={len(test_idx)}")
 
     train_subset = Subset(dataset, train_idx.tolist())
+    validation_subset = Subset(dataset, validation_idx.tolist())
     test_subset = Subset(dataset, test_idx.tolist())
 
     # Weighted sampler for class imbalance
@@ -108,6 +116,9 @@ def train_loclo_fold(dataset, train_idx, test_idx, fold_name, cfg, device):
     train_loader = DataLoader(
         train_subset, batch_size=batch_size, sampler=sampler,
         collate_fn=collate_fn, num_workers=0)
+    validation_loader = DataLoader(
+        validation_subset, batch_size=batch_size, shuffle=False,
+        collate_fn=collate_fn, num_workers=0)
     test_loader = DataLoader(
         test_subset, batch_size=batch_size, shuffle=False,
         collate_fn=collate_fn, num_workers=0)
@@ -135,7 +146,7 @@ def train_loclo_fold(dataset, train_idx, test_idx, fold_name, cfg, device):
     for epoch in range(1, num_epochs + 1):
         train_loss = train_epoch(model, train_loader, optimizer, scheduler,
                                  focal_loss, 1.0, 2.0, device)
-        val = validate(model, test_loader, focal_loss, 1.0, 2.0, device)
+        val = validate(model, validation_loader, focal_loss, 1.0, 2.0, device)
         score = max(val.get("auroc", 0), val.get("balanced_acc", 0))
         if score > best_score:
             best_score = score
@@ -157,11 +168,13 @@ def train_loclo_fold(dataset, train_idx, test_idx, fold_name, cfg, device):
     if best_state:
         model.load_state_dict(best_state)
 
+    threshold = compute_optimal_threshold(model, validation_loader, device)["optimal_threshold"]
+
     y_true_ic50, y_pred_ic50, y_true_cls, y_prob_cls = collect_predictions(
         model, test_loader)
     reg, cls = compute_full_metrics(
-        y_true_ic50, y_pred_ic50, y_true_cls, y_prob_cls)
-    return {**reg, **cls}
+        y_true_ic50, y_pred_ic50, y_true_cls, y_prob_cls, threshold=threshold)
+    return {**reg, **cls, "validation_threshold": float(threshold)}
 
 
 def main():

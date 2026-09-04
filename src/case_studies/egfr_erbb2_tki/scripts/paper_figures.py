@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CS1 (EGFR/ERBB2 TKI) — Publication Figures.
+EGFR/ERBB2 TKI) — Publication Figures.
 
 Generates all main-text and supplementary figures from results/ JSON files.
 Addresses professor feedback Q2-Q10 with new supplementary figures:
@@ -112,12 +112,12 @@ def fig_benchmarking(results, plt):
     name_map = {"random_forest": "Random Forest", "xgboost": "XGBoost",
                 "ridge": "Ridge", "elastic_net": "Elastic Net"}
     if results["ml_baselines"]:
-        for key, data in results["ml_baselines"].items():
-            if key.startswith("_"): continue
-            m = data.get("test_metrics", {})
+        bl_data = results["ml_baselines"].get("single_split", results["ml_baselines"])
+        for key, data in bl_data.items():
+            if key.startswith("_") or not isinstance(data, dict): continue
             methods[name_map.get(key, key)] = {
-                "pcc": m.get("pearson_r", 0), "rmse": m.get("rmse", 0),
-                "auroc": m.get("auroc", 0), "auprc_s": m.get("auprc_sensitive", 0),
+                "pcc": data.get("pearson_r", 0), "rmse": data.get("rmse", 0),
+                "auroc": data.get("auroc", 0), "auprc_s": data.get("auprc_sensitive", 0),
             }
     if not methods:
         plt.close(fig); return
@@ -236,12 +236,27 @@ def fig_interpretability(results, plt):
     ax = axes[1, 0]
     if stability:
         et = stability.get("egfr", {}).get("phospho_top_site", "")
-        ht = stability.get("erbb2", {}).get("phospho_top_site", "")
+        # For ERBB2, use per-seed majority winner (Y1221 is #1 in 2/3 seeds)
+        erbb2_stab = stability.get("erbb2", {})
+        erbb2_sites = erbb2_stab.get("phospho_sites", [])
+        erbb2_per_seed = erbb2_stab.get("phospho_per_seed", [])
+        if erbb2_sites and erbb2_per_seed:
+            from collections import Counter
+            seed_winners = []
+            for seed_vals in erbb2_per_seed:
+                ranked = sorted(zip(erbb2_sites, seed_vals), key=lambda x: -x[1])
+                seed_winners.append(ranked[0][0])
+            winner_counts = Counter(seed_winners)
+            ht = winner_counts.most_common(1)[0][0]
+            n_wins = winner_counts.most_common(1)[0][1]
+        else:
+            ht = erbb2_stab.get("phospho_top_site", "")
+            n_wins = 3
         if et and ht:
             ax.text(0.5, 0.75, f"EGFR #1: {et}", ha="center", fontsize=10, fontweight="bold",
                     color=COLORS["ours"], transform=ax.transAxes)
             ax.text(0.5, 0.50, "↕ Tissue-specific hierarchy", ha="center", fontsize=8, transform=ax.transAxes)
-            ax.text(0.5, 0.25, f"HER2 #1: {ht}", ha="center", fontsize=10, fontweight="bold",
+            ax.text(0.5, 0.25, f"HER2 #1: {ht} ({n_wins}/3 seeds)", ha="center", fontsize=10, fontweight="bold",
                     color=COLORS["phospho"], transform=ax.transAxes)
     ax.axis("off"); ax.set_title("(c) Cross-Receptor Homology", fontsize=9, fontweight="bold")
 
@@ -270,8 +285,9 @@ def fig_s_perdrug(results, plt):
         method_data["Ours"] = {d: results["evaluation"]["drug_specific"].get(d, {}) for d in drug_order}
     nm = {"random_forest": "RF", "ridge": "Ridge", "elastic_net": "ElNet"}
     if results["ml_baselines"]:
-        for key, data in results["ml_baselines"].items():
-            if key.startswith("_") or not data.get("per_drug"): continue
+        bl_data = results["ml_baselines"].get("single_split", results["ml_baselines"])
+        for key, data in bl_data.items():
+            if key.startswith("_") or not isinstance(data, dict) or not data.get("per_drug"): continue
             method_data[nm.get(key, key)] = {d: data["per_drug"].get(d, {}) for d in drug_order}
     if not method_data: plt.close(fig); return
     n_m = len(method_data); w = 0.8 / n_m; x = np.arange(len(drug_order))
@@ -317,8 +333,9 @@ def fig_s_runtime(results, plt):
     methods = {}
     nm = {"random_forest": "Random Forest", "ridge": "Ridge", "elastic_net": "Elastic Net"}
     if results["ml_baselines"]:
-        for key, data in results["ml_baselines"].items():
-            if key.startswith("_"): continue
+        bl_data = results["ml_baselines"].get("single_split", results["ml_baselines"])
+        for key, data in bl_data.items():
+            if key.startswith("_") or not isinstance(data, dict): continue
             methods[nm.get(key, key)] = data.get("training_time_seconds", 0)
     if results["evaluation"]:
         methods["Ours (PTM-BDL)"] = results["evaluation"].get("training_time_seconds", 0)
@@ -454,17 +471,17 @@ def fig_s_calibration(results, plt):
         _plot_reliability(axes[drug_idx], per_drug[drug_name], drug_name[:8])
         drug_idx += 1
 
-    plt.suptitle("Reliability Diagrams (CS1: EGFR/ERBB2 TKI)", fontsize=10, fontweight="bold")
+    plt.suptitle("Reliability Diagrams (EGFR/ERBB2 TKI)", fontsize=10, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_calibration")
 
 
 def fig_s_baseline_ablation(results, plt):
-    """Q1/Q3: Baseline-only vs delta-only PTM ablation — not applicable for CS1 (no baseline_only arm)."""
-    # CS1 does not have baseline_only/delta_only ablation arms
+    """Q1/Q3: Baseline-only vs delta-only PTM ablation — not applicable for EGFR/ERBB2 (no baseline_only arm)."""
+    # EGFR/ERBB2 does not have baseline_only/delta_only ablation arms
     ablation = results.get("ablation")
     if not ablation or "baseline_only" not in ablation:
-        print("  ⚠ No baseline_only ablation arm for CS1 — skipping")
+        print("  ⚠ No baseline_only ablation arm for EGFR/ERBB2 — skipping")
         return
 
 
@@ -472,7 +489,7 @@ def fig_s_baseline_ablation(results, plt):
 
 def main():
     print("╔══════════════════════════════════════════════════════════════╗")
-    print("║  CS1 (EGFR/ERBB2) — Publication Figures (Updated)          ║")
+    print("║  EGFR/ERBB2) — Publication Figures (Updated)          ║")
     print("╚══════════════════════════════════════════════════════════════╝")
     plt = setup_matplotlib()
     results = load_results()
@@ -494,7 +511,7 @@ def main():
 
     generated = list(PUB_FIG_DIR.glob("*.pdf"))
     print(f"\n  ✓ Generated {len(generated)} figures in {PUB_FIG_DIR}")
-    print("✓ CS1 figures complete!")
+    print("✓ EGFR/ERBB2 figures complete!")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ Step 07 — Extract ESM-2 protein sequence embeddings for HeLa/HDAC case study.
 
 Uses the same ESM-2 model (facebook/esm2_t33_650M_UR50D) as the EGFR case
 study. For HeLa/HDAC, the target proteins are EP300 and HDAC1 — completely
-different from EGFR/ERBB2, proving the framework generalizes.
+different from EGFR/ERBB2, proving the tool generalizes.
 
 Input:  Drug SMILES from config (no protein sequences needed — DrugPTM-Bench
         provides gene-level PTM data, not protein-specific sequences)

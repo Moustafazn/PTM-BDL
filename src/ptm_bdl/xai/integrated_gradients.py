@@ -7,9 +7,8 @@ Integrates along ALL PTM input channels simultaneously (level + delta for each
 PTM type), then returns per-site attributions bucketed by channel.
 
 The module is PTM-type-agnostic — it operates on named channels provided by
-the caller. For example:
-  channels = [("ptm_vector", "delta_ptm_vector"),
-              ("secondary_vector", "delta_secondary_vector")]
+the caller. The default is a single flat channel:
+  channels = [("ptm_vector", "delta_ptm_vector")]
 
 Baselines:
   level channels: 1.0 (wild-type occupancy — no modulation)
@@ -25,11 +24,10 @@ from typing import Optional
 import numpy as np
 import torch
 
-# Default PTM channel definitions for the current model interface.
-# Each entry: (level_key, delta_key) in the sample dict / model forward args.
+# Default PTM channel definition for the model interface.
+# All PTM types are concatenated into a single flat vector by the dataset.
 DEFAULT_PTM_CHANNELS = [
     ("ptm_vector", "delta_ptm_vector"),
-    ("secondary_vector", "delta_secondary_vector"),
 ]
 
 

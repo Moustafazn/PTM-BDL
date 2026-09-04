@@ -2,7 +2,7 @@
 EGFR/ERBB2 TKI Resistance — Application-specific biological knowledge.
 
 ALL application-specific labels, homology pairs, mutation groups, and drug
-comparisons live here. The framework packages (ptm_bdl.*) are protein-agnostic.
+comparisons live here. The tool packages (ptm_bdl.*) are protein-agnostic.
 
 Biological context:
   EGFR (P00533) — receptor tyrosine kinase, NSCLC driver

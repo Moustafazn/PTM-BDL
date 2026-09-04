@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CS2 (HeLa/HDAC) — Publication Figures (Updated).
+HeLa/HDAC) — Publication Figures (Updated).
 
 Generates all main-text and supplementary figures addressing professor feedback:
   - Fig_S_cold_start:      Cold-cell + cold-drug LODO (Q4)
@@ -111,7 +111,7 @@ def fig_benchmarking(results, plt):
     axes[1].set_xlabel("RMSE"); axes[1].set_title("(b) Regression", fontsize=9, fontweight="bold")
     for i, v in enumerate(rmses): axes[1].text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=6)
 
-    plt.suptitle("CS2: HeLa/HDAC — Benchmarking", fontsize=11, fontweight="bold")
+    plt.suptitle("HeLa/HDAC: HeLa/HDAC — Benchmarking", fontsize=11, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_benchmarking")
 
@@ -130,7 +130,7 @@ def fig_ablation(results, plt):
     ax.barh(labels, deltas, color=colors)
     ax.axvline(0, color="black", linewidth=0.5)
     ax.set_xlabel("Δ AUROC (Ablated − Full)")
-    ax.set_title(f"CS2 Ablation (Full AUROC={full_auroc:.3f})", fontsize=9, fontweight="bold")
+    ax.set_title(f"HeLa/HDAC Ablation (Full AUROC={full_auroc:.3f})", fontsize=9, fontweight="bold")
     plt.tight_layout()
     _save(fig, plt, "Fig_ablation")
 
@@ -197,7 +197,7 @@ def fig_xai_ptm_types(results, plt):
                     for i, v in enumerate(sv): ax.text(v, i, f" {v:.5f}", va="center", fontsize=6.5)
 
     n_seeds = stability.get("n_seeds", "?")
-    plt.suptitle(f"CS2: HeLa/HDAC — IG Attributions ({n_seeds} seeds)", fontsize=14, fontweight="bold")
+    plt.suptitle(f"HeLa/HDAC: HeLa/HDAC — IG Attributions ({n_seeds} seeds)", fontsize=14, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.94])
     _save(fig, plt, "Fig_interpretability")
 
@@ -222,7 +222,7 @@ def fig_s_loclo(results, plt):
         ax.set_xticks(x); ax.set_xticklabels(groups, rotation=45, ha="right", fontsize=6)
         ax.set_ylabel(ylabel)
         for i, (v, n) in enumerate(zip(vals, ns)): ax.text(i, v + 0.01, f"n={n}", ha="center", fontsize=5)
-    plt.suptitle("CS2: LOCLO by Tissue Type", fontsize=10, fontweight="bold")
+    plt.suptitle("HeLa/HDAC: LOCLO by Tissue Type", fontsize=10, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_loclo")
 
@@ -247,15 +247,17 @@ def fig_s_cold_start(results, plt):
     cd = results.get("cold_drug_lodo")
     if cd and "per_drug_results" in cd:
         ax = axes[1]
-        drugs = [d for d in sorted(cd["per_drug_results"].keys())
-                 if not cd["per_drug_results"][d].get("skipped", False)]
-        aurocs = [cd["per_drug_results"][d].get("auroc", 0) or 0 for d in drugs]
+        drugs = [
+            d for d in sorted(cd["per_drug_results"].keys())
+            if cd["per_drug_results"][d].get("auroc") is not None
+        ]
+        aurocs = [cd["per_drug_results"][d]["auroc"] for d in drugs]
         x = np.arange(len(drugs))
         ax.bar(x, aurocs, color=COLORS["cold_drug"], edgecolor="white")
-        ax.set_xticks(x); ax.set_xticklabels([d[:6] for d in drugs], rotation=45, ha="right", fontsize=6)
+        ax.set_xticks(x); ax.set_xticklabels(drugs, rotation=45, ha="right", fontsize=6)
         ax.set_ylabel("AUROC"); ax.set_ylim(0, 1.1)
         for i, v in enumerate(aurocs): ax.text(i, max(v, 0) + 0.02, f"{v:.3f}", ha="center", fontsize=6)
-    axes[1].set_title("(b) Leave-One-Drug-Out", fontsize=9, fontweight="bold")
+    axes[1].set_title("(b) Leave-One-Drug-Out (AUROC-evaluable drugs)", fontsize=9, fontweight="bold")
     plt.tight_layout()
     _save(fig, plt, "Fig_S_cold_start")
 
@@ -300,7 +302,7 @@ def fig_s_stability(results, plt):
         concordant = d.get("cross_seed_phospho_concordant", False)
         ax.set_title(f"{protein} Phospho\nTop: {top} ({'concordant' if concordant else 'varies'})",
                      fontsize=9, fontweight="bold")
-    plt.suptitle("CS2: IG Stability Across Seeds", fontsize=11, fontweight="bold")
+    plt.suptitle("HeLa/HDAC: IG Stability Across Seeds", fontsize=11, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_stability")
 
@@ -337,7 +339,7 @@ def fig_s_calibration(results, plt):
         if idx >= n_panels: break
         _plot_rel(axes[idx], per_drug[drug], drug[:10])
         idx += 1
-    plt.suptitle("CS2: Reliability Diagrams", fontsize=10, fontweight="bold")
+    plt.suptitle("HeLa/HDAC: Reliability Diagrams", fontsize=10, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_calibration")
 
@@ -369,7 +371,7 @@ def fig_s_baseline_ablation(results, plt):
         ax.set_ylabel(ylabel)
         for i, v in enumerate(vals): ax.text(i, v + 0.005, f"{v:.3f}", ha="center", fontsize=6)
         ax.set_title(f"({'a' if panel == 0 else 'b'}) {ylabel}", fontsize=9, fontweight="bold")
-    plt.suptitle("CS2: Baseline-Only vs Delta-Only PTM Ablation", fontsize=10, fontweight="bold")
+    plt.suptitle("HeLa/HDAC: Baseline-Only vs Delta-Only PTM Ablation", fontsize=10, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_baseline_ablation")
 
@@ -397,7 +399,7 @@ def fig_s_excl_romidepsin(results, plt):
     for i in range(len(metrics)):
         ax.text(i - w/2, full_vals[i] + 0.02, f"{full_vals[i]:.3f}", ha="center", fontsize=6)
         ax.text(i + w/2, excl_vals[i] + 0.02, f"{excl_vals[i]:.3f}", ha="center", fontsize=6)
-    ax.set_title("CS2: Impact of Romidepsin Exclusion", fontsize=9, fontweight="bold")
+    ax.set_title("HeLa/HDAC: Impact of Romidepsin Exclusion", fontsize=9, fontweight="bold")
     plt.tight_layout()
     _save(fig, plt, "Fig_S_excl_romidepsin")
 
@@ -406,7 +408,7 @@ def fig_s_excl_romidepsin(results, plt):
 
 def main():
     print("╔══════════════════════════════════════════════════════════════╗")
-    print("║  CS2 (HeLa/HDAC) — Publication Figures (Updated)           ║")
+    print("║  HeLa/HDAC) — Publication Figures (Updated)           ║")
     print("╚══════════════════════════════════════════════════════════════╝")
     plt = setup_matplotlib()
     results = load_results()
@@ -427,7 +429,7 @@ def main():
 
     generated = list(FIGURES_DIR.glob("*.pdf"))
     print(f"\n  ✓ Generated {len(generated)} figures in {FIGURES_DIR}")
-    print("✓ CS2 figures complete!")
+    print("✓ HeLa/HDAC figures complete!")
 
 
 if __name__ == "__main__":

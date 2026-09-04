@@ -9,13 +9,13 @@
 ║                                                                              ║
 ║  PART 1 — FEATURE & ARCHITECTURE ABLATIONS                                  ║
 ║    Symmetric across the two PTM channels (phospho ⊕ glyco):                 ║
-║      no_ptm              — all PTM features zeroed (baseline)               ║
-║      no_secondary        — primary only (phospho); drops secondary (glyco)  ║
-║      secondary_only      — secondary only (glyco); drops primary (phospho)  ║
+║      no_ptm              — PTMs reset to reference state (baseline=1, Δ=0)  ║
+║      no_glyco        — primary only (phospho); zeros glyco slot range   ║
+║      glyco_only      — secondary only (glyco); zeros phospho slot range ║
 ║      no_typed_attention  — PTM-BDL with MLP in place of typed self-attn     ║
 ║      full                — full PTM-BDL (= proposal Model C, phospho+glyco) ║
-║      (Level-1/Level-2 ablation arms have been retired — see                 ║
-║      PTM_Biological_Dynamics_Layer.md §1.2 Problem 3 + §8.1.)               ║
+║    Per-PTM-type ablation uses the registry's zero_slot_range to zero        ║
+║    specific PTM type slots in the flat ptm_vector.                          ║
 ║                                                                              ║
 ║  PART 2 — MULTI-SEED STABILITY (3 seeds × per-protein × per-mod-type IG)    ║
 ║    Per-mod-type IG buckets at the PTM-BDL token boundary:                   ║
@@ -52,7 +52,7 @@ from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
-# ── Import from framework packages ──────────────────────────────────────────
+# ── Import from tool packages ──────────────────────────────────────────
 from src.ptm_bdl.data.dataset import ResistanceDataset
 from src.ptm_bdl.data.collate import collate_fn
 from src.ptm_bdl.training.loss import FocalLoss
@@ -199,7 +199,7 @@ def _train_loop(model, train_loader, val_loader, focal_loss, device, save_path):
 ABLATION_CONFIGS = {
     "no_ptm": dict(
         label="Model A: No PTM",
-        description="All PTM features (phospho + glyco + L2) zeroed.",
+        description="All PTM levels reset to baseline 1.0 and deltas to 0.0.",
         color="#d62728", use_typed_attention=True, data_mode="no_ptm",
     ),
     "baseline_only": dict(
@@ -214,15 +214,29 @@ ABLATION_CONFIGS = {
                     "Isolates purely dynamic pharmacodynamic signal.",
         color="#2ca02c", use_typed_attention=True, data_mode="delta_only",
     ),
-    "no_secondary": dict(
+    "no_glyco": dict(
         label="Model E: No secondary (glyco)",
-        description="Primary (phospho) channel active, secondary (glyco) channel zeroed.",
-        color="#9467bd", use_typed_attention=True, data_mode="no_secondary",
+        description="Primary (phospho) channel active, secondary (glyco) channel zeroed "
+                    "via zero_slot_range on the flat ptm_vector.",
+        color="#9467bd", use_typed_attention=True, data_mode="full",
+        zero_slot_range=(12, 24),  # zero glyco slots in flat vector
     ),
-    "secondary_only": dict(
+    "glyco_only": dict(
         label="Model F: Secondary only (glyco)",
-        description="Secondary (glyco) channel active, primary (phospho) channel zeroed.",
-        color="#8c564b", use_typed_attention=True, data_mode="secondary_only",
+        description="Secondary (glyco) channel active, primary (phospho) channel zeroed "
+                    "via zero_slot_range on the flat ptm_vector.",
+        color="#8c564b", use_typed_attention=True, data_mode="full",
+        zero_slot_range=(0, 12),  # zero phospho slots in flat vector
+    ),
+    "no_drug": dict(
+        label="Model H: No Drug",
+        description="Drug embeddings (ChemBERTa) zeroed.",
+        color="#ff7f0e", use_typed_attention=True, data_mode="no_drug",
+    ),
+    "no_structure": dict(
+        label="Model I: No Structure",
+        description="Structural embeddings (GearNet) zeroed.",
+        color="#2ca02c", use_typed_attention=True, data_mode="no_structure",
     ),
     "no_typed_attention": dict(
         label="Model G: No typed attention",
@@ -249,47 +263,117 @@ ABLATION_CONFIGS["measured_only"] = dict(
 
 ABLATION_ORDER = [
     "no_ptm", "baseline_only", "delta_only", "measured_only",
-    "no_secondary", "secondary_only", "no_typed_attention", "full",
+    "no_glyco", "glyco_only", "no_drug", "no_structure",
+    "no_typed_attention", "full",
 ]
 
 
+# ── Inference-only ablation vs retrained ablation ─────────────────────
+# Data-level ablation arms (no_ptm, baseline_only, delta_only, etc.)
+# use the SAME production best_model.pt and only change the input data.
+# This eliminates retraining variance — critical when the test set has
+# only 12 sensitive samples (one sample ≈ 0.008 AUROC).
+#
+# Architecture-level arms (no_typed_attention) MUST retrain because the
+# model graph differs.  These use 3-seed mean to absorb variance.
+#
+# Ref: Fisher et al., JMLR 2019 — "Model Reliance" via input ablation
+#      on a fixed model is the standard feature importance protocol.
+
+# Arms that require retraining (architecture change)
+_RETRAIN_ARMS = {"no_typed_attention"}
+_RETRAIN_SEEDS = [42, 123, 456]
+
+
+def _infer_ablation(mode_key, spec, model, dataset_path, features_dir,
+                    val_idx, test_idx, device):
+    """Evaluate a fixed model with ablated input data (no retraining)."""
+    zero_slot_range = spec.get("zero_slot_range", None)
+    dataset = ResistanceDataset(dataset_path, features_dir,
+                                ablation_mode=spec["data_mode"],
+                                zero_slot_range=zero_slot_range)
+    bs = cfg["model"]["batch_size"]
+    val_set = Subset(dataset, val_idx)
+    test_set = Subset(dataset, test_idx)
+    val_loader = DataLoader(val_set, batch_size=bs, shuffle=False,
+                            collate_fn=collate_fn)
+    test_loader = DataLoader(test_set, batch_size=bs, shuffle=False,
+                             collate_fn=collate_fn)
+    focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
+    val_m = validate(model, val_loader, focal_loss, 1.0, 2.0, device)
+    test_m = validate(model, test_loader, focal_loss, 1.0, 2.0, device)
+    return val_m, test_m
+
+
+def _retrain_ablation(mode_key, spec, dataset_path, features_dir,
+                      train_idx, val_idx, test_idx, device):
+    """Retrain with 3 seeds, return median-AUROC model's metrics + stats."""
+    seed_metrics = []
+    for seed in _RETRAIN_SEEDS:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        dataset = ResistanceDataset(dataset_path, features_dir,
+                                    ablation_mode=spec["data_mode"])
+        train_loader, val_loader, test_loader = _make_loaders(
+            dataset, train_idx, val_idx, test_idx)
+        model = build_model_from_cfg(
+            cfg, use_typed_attention=spec["use_typed_attention"]).to(device)
+        focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
+        save_path = MODEL_DIR / f"ablation_{mode_key}_s{seed}.pt"
+        best_score, n_epochs = _train_loop(
+            model, train_loader, val_loader, focal_loss, device, save_path)
+        model.load_state_dict(torch.load(save_path, map_location=device,
+                                         weights_only=True))
+        val_m = validate(model, val_loader, focal_loss, 1.0, 2.0, device)
+        test_m = validate(model, test_loader, focal_loss, 1.0, 2.0, device)
+        print(f"      seed={seed}: AUROC={test_m.get('auroc',0):.3f}, "
+              f"BAcc={test_m['balanced_acc']:.3f}  ({n_epochs} ep)")
+        seed_metrics.append({"val_metrics": val_m, "test_metrics": test_m,
+                             "training_epochs": n_epochs, "seed": seed})
+    # Pick median-AUROC seed as representative
+    aurocs = [s["test_metrics"].get("auroc", 0) for s in seed_metrics]
+    mid = int(np.argsort(aurocs)[len(aurocs) // 2])
+    rep = seed_metrics[mid]
+    # Aggregate stats
+    agg = {}
+    for k in ["auroc", "balanced_acc", "rmse", "pearson_r", "auprc_sensitive"]:
+        vals = [s["test_metrics"].get(k, 0) for s in seed_metrics]
+        agg[k] = {"mean": round(float(np.mean(vals)), 4),
+                   "std": round(float(np.std(vals)), 4)}
+    return rep["val_metrics"], rep["test_metrics"], rep["training_epochs"], agg
+
+
 def train_ablation_model(mode_key, dataset_path, features_dir,
-                         train_idx, val_idx, test_idx, device):
+                         train_idx, val_idx, test_idx, device,
+                         production_model=None):
     spec = ABLATION_CONFIGS[mode_key]
+    retrain = mode_key in _RETRAIN_ARMS
+    tag = "retrain ×3 seeds" if retrain else "inference-only"
     print(f"\n  {'─' * 60}")
-    print(f"  {spec['label']}")
+    print(f"  {spec['label']}  ({tag})")
     print(f"  {spec['description']}")
     print(f"  {'─' * 60}")
 
-    seed = cfg["training"]["seed"]
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-    dataset = ResistanceDataset(dataset_path, features_dir,
-                                ablation_mode=spec["data_mode"])
-    train_loader, val_loader, test_loader = _make_loaders(
-        dataset, train_idx, val_idx, test_idx)
-
-    model = build_model_from_cfg(
-        cfg, use_typed_attention=spec["use_typed_attention"]).to(device)
-    focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
-    save_path = MODEL_DIR / f"ablation_{mode_key}.pt"
-
     t0 = time.time()
-    best_score, n_epochs = _train_loop(
-        model, train_loader, val_loader, focal_loss, device, save_path)
+    agg = None
+    n_epochs = 0
+
+    if retrain:
+        val_m, test_m, n_epochs, agg = _retrain_ablation(
+            mode_key, spec, dataset_path, features_dir,
+            train_idx, val_idx, test_idx, device)
+    else:
+        val_m, test_m = _infer_ablation(
+            mode_key, spec, production_model, dataset_path, features_dir,
+            val_idx, test_idx, device)
+
     elapsed = time.time() - t0
-
-    model.load_state_dict(torch.load(save_path, map_location=device,
-                                     weights_only=True))
-    val_m = validate(model, val_loader, focal_loss, 1.0, 2.0, device)
-    test_m = validate(model, test_loader, focal_loss, 1.0, 2.0, device)
-    print(f"    Test: BAcc={test_m['balanced_acc']:.3f}, "
-          f"AUROC={test_m.get('auroc', 0):.3f}, "
+    print(f"    Test: AUROC={test_m.get('auroc', 0):.3f}, "
+          f"BAcc={test_m['balanced_acc']:.3f}, "
           f"RMSE={test_m.get('rmse', 0):.3f}, "
-          f"R={test_m.get('pearson_r', 0):.3f}  ({n_epochs} epochs / {elapsed:.0f}s)")
+          f"R={test_m.get('pearson_r', 0):.3f}  ({elapsed:.0f}s)")
 
-    return {
+    result = {
         "label": spec["label"],
         "description": spec["description"],
         "val_metrics": val_m,
@@ -298,12 +382,18 @@ def train_ablation_model(mode_key, dataset_path, features_dir,
         "training_time_seconds": round(elapsed, 1),
         "use_typed_attention": spec["use_typed_attention"],
         "data_mode": spec["data_mode"],
+        "method": "retrained" if retrain else "inference_only",
     }
+    if agg:
+        result["multi_seed"] = agg
+    return result
 
 
 def run_ablation_study(device):
     print("\n══════════════════════════════════════════════════════════════")
     print("PART 1: PTM-BDL Feature & Architecture Ablations")
+    print("  Data-level arms: inference-only on best_model.pt")
+    print("  Architecture arms: retrained ×3 seeds")
     print("══════════════════════════════════════════════════════════════")
 
     train_idx, val_idx, test_idx = _load_split()
@@ -313,11 +403,23 @@ def run_ablation_study(device):
                     / "multimodal_dataset.csv")
     features_dir = PROJECT_ROOT / cfg["paths"]["features"]
 
+    # Load the production model once for all inference-only arms
+    prod_path = MODEL_DIR / "best_model.pt"
+    if not prod_path.exists():
+        raise FileNotFoundError(
+            f"best_model.pt not found at {prod_path}. Run train.py first.")
+    prod_model = build_model_from_cfg(cfg).to(device)
+    prod_model.load_state_dict(torch.load(prod_path, map_location=device,
+                                          weights_only=True))
+    prod_model.eval()
+    print(f"  Loaded production model: {prod_path.name}")
+
     results = {}
     for mode in ABLATION_ORDER:
         results[mode] = train_ablation_model(
             mode, dataset_path, features_dir,
             train_idx, val_idx, test_idx, device,
+            production_model=prod_model,
         )
 
     # ── Comparison table ────────────────────────────────────────────────
@@ -350,9 +452,9 @@ def run_ablation_study(device):
 
     # Channel-level gains
     secondary_marginal = (full_m.get("auroc", 0)
-                          - results["no_secondary"]["test_metrics"].get("auroc", 0))
+                          - results["no_glyco"]["test_metrics"].get("auroc", 0))
     primary_marginal = (full_m.get("auroc", 0)
-                        - results["secondary_only"]["test_metrics"].get("auroc", 0))
+                        - results["glyco_only"]["test_metrics"].get("auroc", 0))
     typed_attn_marginal = (full_m.get("auroc", 0)
                            - results["no_typed_attention"]["test_metrics"].get("auroc", 0))
 
@@ -381,16 +483,22 @@ def run_ablation_study(device):
                        else "MIXED" if votes_help >= 1 else "NO_HELP"),
     }
 
-    save = {mode: {
-        "label": results[mode]["label"],
-        "description": results[mode]["description"],
-        "use_typed_attention": results[mode]["use_typed_attention"],
-        "data_mode": results[mode]["data_mode"],
-        "val_metrics": results[mode]["val_metrics"],
-        "test_metrics": results[mode]["test_metrics"],
-        "training_epochs": results[mode]["training_epochs"],
-        "training_time_seconds": results[mode]["training_time_seconds"],
-    } for mode in ABLATION_ORDER}
+    save = {}
+    for mode in ABLATION_ORDER:
+        entry = {
+            "label": results[mode]["label"],
+            "description": results[mode]["description"],
+            "use_typed_attention": results[mode]["use_typed_attention"],
+            "data_mode": results[mode]["data_mode"],
+            "val_metrics": results[mode]["val_metrics"],
+            "test_metrics": results[mode]["test_metrics"],
+            "training_epochs": results[mode]["training_epochs"],
+            "training_time_seconds": results[mode]["training_time_seconds"],
+            "method": results[mode].get("method", "retrained"),
+        }
+        if "multi_seed" in results[mode]:
+            entry["multi_seed"] = results[mode]["multi_seed"]
+        save[mode] = entry
     save["_summary"] = summary
 
     out_path = RESULTS_DIR / "ablation_study.json"
@@ -433,31 +541,24 @@ def run_ablation_study(device):
 
 def _run_ptm_bdl_ig(model, dataset, indices, df, n_steps: int = 20):
     """
-    Integrated Gradients on the PTM-BDL 24-token input plane.
+    Integrated Gradients on the PTM-BDL flat 24-token input plane.
 
-    Integrates along ALL 4 independent input channels simultaneously:
-      - ptm_vector      (phospho baseline level, baseline=1.0 = WT)
-      - delta_ptm_vector (drug-induced phospho change, baseline=0.0 = no drug)
-      - secondary_vector     (secondary PTM baseline level, baseline=1.0 = WT)
-      - delta_secondary_vector (drug-induced secondary PTM change, baseline=0.0 = no drug)
-
-    The model sees [level, delta, ratio] per token where ratio = delta/(level+ε).
-    Integrating along BOTH level AND delta captures the full input space:
-      - EGFR glyco level is constant (1.0) → level IG = 0, but delta_glyco
-        varies → delta IG captures the drug-induced glyco signal.
-      - ERBB2 delta_glyco is constant → delta IG = 0, but glyco level
-        varies → level IG captures the baseline glyco signal.
-      - Phospho: both level and delta vary for both proteins → both contribute.
+    Uses the flat ptm_vector (24 tokens: 12 phospho + 12 glyco) and
+    delta_ptm_vector (24 tokens).  Integrates along both level and delta
+    channels simultaneously.
 
     Per-site importance = |grad_level × Δlevel| + |grad_delta × Δdelta|
+
+    After integration, slices results into phospho (0:12) and glyco (12:24)
+    for per-protein, per-mod-type reporting.
 
     Returns dict with arrays per mod-type bucket, per protein.
     """
     model.train()  # need grads
-    baseline_phospho = torch.ones(12)  # WT phospho = no modulation
-    baseline_glyco = torch.ones(12)  # WT glyco = unit occupancy
-    baseline_dphospho = torch.zeros(12)  # no drug effect on phospho
-    baseline_dglyco = torch.zeros(12)  # no drug effect on glyco
+    dev = next(model.parameters()).device
+    n_tokens = 24  # 12 phospho + 12 glyco
+    baseline_level = torch.ones(n_tokens, device=dev)   # WT = no modulation
+    baseline_delta = torch.zeros(n_tokens, device=dev)  # no drug effect
 
     sums = {
         "EGFR_phospho": np.zeros(12), "EGFR_glyco": np.zeros(12),
@@ -467,77 +568,55 @@ def _run_ptm_bdl_ig(model, dataset, indices, df, n_steps: int = 20):
 
     for idx in indices:
         sample = dataset[int(idx)]
-        actual_phospho = sample["ptm_vector"]
-        actual_glyco = sample["secondary_vector"]
-        actual_dphospho = sample["delta_ptm_vector"]
-        actual_dglyco = sample["delta_secondary_vector"]
+        actual_level = sample["ptm_vector"].to(dev)        # (24,) flat
+        actual_delta = sample["delta_ptm_vector"].to(dev)  # (24,) flat
         tp = sample["target_protein"].view(1).long()
         protein = "ERBB2" if tp.item() == PROTEIN_ID_ERBB2 else "EGFR"
         counts[protein] += 1
 
-        seq_e = sample["seq_emb"].unsqueeze(0)
-        str_e = sample["struct_emb"].unsqueeze(0)
-        drg_e = sample["drug_emb"].unsqueeze(0)
-        drg_p = sample["drug_pooled"].unsqueeze(0)
+        seq_e = sample["seq_emb"].unsqueeze(0).to(dev)
+        str_e = sample["struct_emb"].unsqueeze(0).to(dev)
+        drg_e = sample["drug_emb"].unsqueeze(0).to(dev)
+        drg_p = sample["drug_pooled"].unsqueeze(0).to(dev)
+        tp = tp.to(dev)
 
-        # Gradient accumulators for all 4 input channels
-        grads_phospho = torch.zeros(12)  # ∂out/∂level_phospho
-        grads_glyco = torch.zeros(12)  # ∂out/∂level_glyco
-        grads_dphospho = torch.zeros(12)  # ∂out/∂delta_phospho
-        grads_dglyco = torch.zeros(12)  # ∂out/∂delta_glyco
+        # Gradient accumulators for level and delta channels
+        grads_level = torch.zeros(n_tokens, device=dev)
+        grads_delta = torch.zeros(n_tokens, device=dev)
 
         for step in range(n_steps + 1):
             a = step / n_steps
-            # Interpolate ALL 4 inputs from baseline → actual
-            iph = (baseline_phospho + a * (actual_phospho - baseline_phospho)
-                   ).unsqueeze(0).requires_grad_(True)
-            igl = (baseline_glyco + a * (actual_glyco - baseline_glyco)
-                   ).unsqueeze(0).requires_grad_(True)
-            idph = (baseline_dphospho + a * (actual_dphospho - baseline_dphospho)
-                    ).unsqueeze(0).requires_grad_(True)
-            idgl = (baseline_dglyco + a * (actual_dglyco - baseline_dglyco)
-                    ).unsqueeze(0).requires_grad_(True)
+            interp_level = (baseline_level + a * (actual_level - baseline_level)
+                           ).unsqueeze(0).requires_grad_(True)
+            interp_delta = (baseline_delta + a * (actual_delta - baseline_delta)
+                           ).unsqueeze(0).requires_grad_(True)
 
             _, resist_pred = model(
                 seq_embeddings=seq_e,
                 struct_embeddings=str_e,
                 drug_pooled=drg_p,
                 drug_embeddings=drg_e,
-                ptm_vector=iph,
-                delta_ptm_vector=idph,
-                secondary_vector=igl,
-                delta_secondary_vector=idgl,
+                ptm_vector=interp_level,
+                delta_ptm_vector=interp_delta,
                 target_protein=tp,
             )
             model.zero_grad()
             resist_pred.backward()
-            if iph.grad is not None:
-                grads_phospho += iph.grad.squeeze(0).detach()
-            if igl.grad is not None:
-                grads_glyco += igl.grad.squeeze(0).detach()
-            if idph.grad is not None:
-                grads_dphospho += idph.grad.squeeze(0).detach()
-            if idgl.grad is not None:
-                grads_dglyco += idgl.grad.squeeze(0).detach()
+            if interp_level.grad is not None:
+                grads_level += interp_level.grad.squeeze(0).detach()
+            if interp_delta.grad is not None:
+                grads_delta += interp_delta.grad.squeeze(0).detach()
 
-        # IG formula: per-site importance = |avg_grad_level × Δlevel| + |avg_grad_delta × Δdelta|
-        # This captures contributions from BOTH independent input channels.
-        delta_ph = actual_phospho - baseline_phospho
-        delta_gl = actual_glyco - baseline_glyco
-        delta_dph = actual_dphospho - baseline_dphospho
-        delta_dgl = actual_dglyco - baseline_dglyco
+        # IG formula: |avg_grad_level × Δlevel| + |avg_grad_delta × Δdelta|
+        d_level = actual_level - baseline_level
+        d_delta = actual_delta - baseline_delta
+        n_s = n_steps + 1
+        attr = (np.abs(((grads_level / n_s) * d_level).cpu().numpy())
+                + np.abs(((grads_delta / n_s) * d_delta).cpu().numpy()))
 
-        attr_ph_level = np.abs(((grads_phospho / (n_steps + 1)) * delta_ph).numpy())
-        attr_ph_delta = np.abs(((grads_dphospho / (n_steps + 1)) * delta_dph).numpy())
-        attr_gl_level = np.abs(((grads_glyco / (n_steps + 1)) * delta_gl).numpy())
-        attr_gl_delta = np.abs(((grads_dglyco / (n_steps + 1)) * delta_dgl).numpy())
-
-        # Combined per-site importance (level + delta contributions)
-        attr_ph = attr_ph_level + attr_ph_delta
-        attr_gl = attr_gl_level + attr_gl_delta
-
-        sums[f"{protein}_phospho"] += attr_ph
-        sums[f"{protein}_glyco"] += attr_gl
+        # Slice into phospho (0:12) and glyco (12:24)
+        sums[f"{protein}_phospho"] += attr[:12]
+        sums[f"{protein}_glyco"] += attr[12:24]
 
     model.eval()
     out = {}
@@ -785,9 +864,7 @@ def run_randomized_ptm_control(device):
                   + [f"delta_glyco_slot{i:02d}" for i in range(12)])
 
     # ── Load the trained full model ─────────────────────────────────────
-    full_model_path = MODEL_DIR / "ablation_full.pt"
-    if not full_model_path.exists():
-        full_model_path = MODEL_DIR / "best_model.pt"
+    full_model_path = MODEL_DIR / "best_model.pt"
     if not full_model_path.exists():
         print("  ✗ No trained model found — cannot run inference-only control.")
         print("    Run Part 1 (ablation) first to produce ablation_full.pt.")

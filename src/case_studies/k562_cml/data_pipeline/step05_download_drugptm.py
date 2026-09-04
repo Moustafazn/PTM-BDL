@@ -18,7 +18,7 @@
 ║    K562 is a CML cell line driven by BCR-ABL fusion — a completely          ║
 ║    different kinase system from EGFR/HER2. It also has non-TKI drugs        ║
 ║    (Cytarabine, Paclitaxel, Methotrexate) that work through DNA            ║
-║    synthesis and microtubule pathways — proving the framework handles       ║
+║    synthesis and microtubule pathways — proving the tool handles       ║
 ║    diverse drug mechanisms.                                                  ║
 ║                                                                              ║
 ║  DATA SOURCE:                                                                ║

@@ -40,7 +40,7 @@ import yaml
 from scipy import stats
 
 from src.ptm_bdl.evaluation.statistical import (
-    bootstrap_ci as _framework_bootstrap_ci,
+    bootstrap_ci as _tool_bootstrap_ci,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
@@ -61,12 +61,12 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 def bootstrap_ci(y_true, y_pred, metric_fn, n_boot=1000, alpha=0.05,
                  seed=42):
-    """Compute bootstrap CI. Delegates to framework."""
-    result = _framework_bootstrap_ci(
+    """Compute bootstrap CI. Delegates to tool."""
+    result = _tool_bootstrap_ci(
         y_true, y_pred, metric_fn,
         n_resamples=n_boot, ci=1.0 - alpha, random_state=seed,
     )
-    # Map framework output keys to case study expected keys
+    # Map tool output keys to case study expected keys
     return {
         "point": float(metric_fn(y_true, y_pred)),
         "ci_lower": result["ci_lower"],

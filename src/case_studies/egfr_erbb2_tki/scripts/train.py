@@ -8,7 +8,7 @@ Trains the PTM-BDL model on the EGFR/ERBB2 TKI resistance dataset.
   - 2 PTM types: phospho (Y/S/T subtypes) + glyco (N subtype)
   - 24 PTM tokens per sample (12 phospho + 12 glyco)
 
-Uses the framework packages:
+Uses the tool packages:
   ptm_bdl.training  — train_epoch, validate, FocalLoss, build_model_from_cfg
   ptm_bdl.data      — ResistanceDataset, collate_fn, create_stratified_splits
 """
@@ -19,10 +19,14 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch.utils.data import Subset, DataLoader, WeightedRandomSampler
+from torch.utils.data import Subset, DataLoader
 
 from src.ptm_bdl.data import ResistanceDataset, collate_fn, create_stratified_splits
-from src.ptm_bdl.training import FocalLoss, train_epoch, validate, build_model_from_cfg, compute_optimal_threshold
+from src.ptm_bdl.training import (
+    FocalLoss, train_epoch, validate, build_model_from_cfg,
+    compute_optimal_threshold, save_checkpoint, load_checkpoint,
+    resolve_device, create_balanced_sampler,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 from src.ptm_bdl.config import load_config
@@ -38,23 +42,14 @@ def train():
     """Two-stage training pipeline with class-balanced sampling."""
     print("╔══════════════════════════════════════════════════════════════╗")
     print("║  EGFR/ERBB2 TKI Case Study — Training                     ║")
-    print("║  Framework: ptm_bdl.training + ptm_bdl.data                ║")
+    print("║  Tool: ptm_bdl.training + ptm_bdl.data                ║")
     print("╚══════════════════════════════════════════════════════════════╝")
 
     seed = cfg["training"]["seed"]
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    device_str = cfg["training"]["device"]
-    if device_str == "auto":
-        device = torch.device(
-            "cuda" if torch.cuda.is_available()
-            else "mps" if (hasattr(torch.backends, "mps")
-                           and torch.backends.mps.is_available())
-            else "cpu"
-        )
-    else:
-        device = torch.device(device_str)
+    device = resolve_device(cfg)
     print(f"\n  Device: {device}")
 
     dataset_path = (PROJECT_ROOT / cfg["paths"]["processed_data"]
@@ -89,14 +84,7 @@ def train():
     train_set = Subset(dataset, train_idx)
     val_set = Subset(dataset, val_idx)
 
-    train_labels = dataset.df["resistance_label"].values[train_idx]
-    class_counts = np.bincount(train_labels.astype(int))
-    class_weights = 1.0 / class_counts
-    sample_weights = class_weights[train_labels.astype(int)]
-    sampler = WeightedRandomSampler(
-        weights=torch.from_numpy(sample_weights).float(),
-        num_samples=len(train_set), replacement=True,
-    )
+    sampler = create_balanced_sampler(dataset, train_idx)
 
     batch_size = cfg["model"]["batch_size"]
     train_loader = DataLoader(train_set, batch_size=batch_size,
@@ -139,7 +127,7 @@ def train():
         if val_score > best_val_score:
             best_val_score = val_score
             patience_counter = 0
-            torch.save(model.state_dict(), MODEL_DIR / "best_model_stage1.pt")
+            save_checkpoint(model, MODEL_DIR / "best_model_stage1.pt")
         else:
             patience_counter += 1
             if patience_counter >= patience:
@@ -152,7 +140,7 @@ def train():
 
     # ── Compute optimal classification threshold (Youden's J) ──────────────
     print(f"\n  Computing optimal threshold (Youden's J on validation set)...")
-    model.load_state_dict(torch.load(MODEL_DIR / "best_model.pt", map_location=device))
+    load_checkpoint(model, MODEL_DIR / "best_model.pt", device)
     threshold_info = compute_optimal_threshold(model, val_loader, device)
     with open(MODEL_DIR / "optimal_threshold.json", "w") as f:
         json.dump(threshold_info, f, indent=2)

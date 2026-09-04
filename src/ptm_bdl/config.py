@@ -1,5 +1,5 @@
 """
-Config loader — merges base framework config with case-study-specific config.
+Config loader — merges base tool config with case-study-specific config.
 
 The base config (model architecture, training settings, PTM-BDL hyperparameters)
 lives at src/ptm_bdl/default_config.yaml (shipped with the package).
@@ -27,7 +27,7 @@ import yaml
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _PACKAGE_DIR.parent.parent  # src/ptm_bdl -> src -> project_root
 
-# Default config bundled with the framework package
+# Default config bundled with the tool package
 DEFAULT_CONFIG_PATH = _PACKAGE_DIR / "default_config.yaml"
 
 
@@ -49,16 +49,16 @@ def load_config(case_study: str | None = "egfr_erbb2_tki",
 
     Args:
         case_study: Name of the case study (e.g., "egfr_erbb2_tki").
-                    If None, only the base framework config is loaded.
+                    If None, only the base tool config is loaded.
         project_root: Override project root path. If None, auto-detected
                       from package location.
 
     Returns:
-        Merged config dict with framework settings + case study settings.
+        Merged config dict with tool settings + case study settings.
     """
     root = Path(project_root) if project_root else _PROJECT_ROOT
 
-    # Load base framework config (bundled with the package)
+    # Load base tool config (bundled with the package)
     with open(DEFAULT_CONFIG_PATH) as f:
         cfg = yaml.safe_load(f)
 

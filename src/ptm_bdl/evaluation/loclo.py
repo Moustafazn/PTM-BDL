@@ -1,5 +1,5 @@
 """
-Leave-One-Class-Line-Out (LOCLO) generalization framework.
+Leave-One-Class-Line-Out (LOCLO) generalization tool.
 
 Tests whether the model generalizes to held-out groups of samples (e.g.,
 cell lines grouped by mutation class, amplification status, or tissue type).
@@ -149,8 +149,6 @@ def run_loclo(
                     drug_embeddings=batch_dev.get("drug_emb"),
                     ptm_vector=batch_dev["ptm_vector"],
                     delta_ptm_vector=batch_dev["delta_ptm_vector"],
-                    secondary_vector=batch_dev.get("secondary_vector"),
-                    delta_secondary_vector=batch_dev.get("delta_secondary_vector"),
                     target_protein=batch_dev["target_protein"],
                 )
                 all_ic50_pred.append(ic50_pred.cpu().numpy())

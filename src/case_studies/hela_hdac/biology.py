@@ -2,7 +2,7 @@
 HeLa / HDAC Inhibitor — Application-specific biological knowledge.
 
 ALL application-specific labels, PTM sites, drug classifications, and
-biological validation targets live here. The framework packages (ptm_bdl.*)
+biological validation targets live here. The tool packages (ptm_bdl.*)
 are protein-agnostic.
 
 Biological context:

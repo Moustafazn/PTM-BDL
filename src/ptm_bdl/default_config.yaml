@@ -1,7 +1,7 @@
 # ============================================================================
-# PTM-BDL FRAMEWORK — Base Configuration
+# PTM-BDL tool — Base Configuration
 # ============================================================================
-# Framework-level settings shared across ALL case studies.
+# tool-level settings shared across ALL case studies.
 # Case-study-specific settings (proteins, drugs, PTM sites) are defined in
 # each case study's own config.yaml file.
 # ============================================================================

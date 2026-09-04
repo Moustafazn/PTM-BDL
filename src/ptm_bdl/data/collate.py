@@ -27,8 +27,6 @@ def collate_fn(batch):
         "drug_pooled": torch.stack([b["drug_pooled"] for b in batch]),
         "ptm_vector": torch.stack([b["ptm_vector"] for b in batch]),
         "delta_ptm_vector": torch.stack([b["delta_ptm_vector"] for b in batch]),
-        "secondary_vector": torch.stack([b["secondary_vector"] for b in batch]),
-        "delta_secondary_vector": torch.stack([b["delta_secondary_vector"] for b in batch]),
         "target_protein": torch.stack([b["target_protein"] for b in batch]),
         "propagation_confidence": torch.stack([b["propagation_confidence"] for b in batch]),
         "ln_ic50": torch.stack([b["ln_ic50"] for b in batch]),

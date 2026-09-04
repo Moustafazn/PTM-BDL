@@ -653,4 +653,4 @@ drugs:
   # neratinib: "CCOc1cc2ncc(C#N)c(Nc3ccc(OCc4ccccn4)c(Cl)c3)c2cc1NC(=O)/C=C/CN(C)C"
 
 
-# NOTE: Framework-level settings (model, ptm_bdl, training) are in config/config.yaml
+# NOTE: Tool-level settings (model, ptm_bdl, training) are in config/config.yaml

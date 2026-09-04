@@ -1,5 +1,5 @@
 # ============================================================================
-# Makefile — PTM-BDL Framework Pipeline
+# Makefile — PTM-BDL tool Pipeline
 # ============================================================================
 # Supports ALL case studies independently:
 #
@@ -39,7 +39,7 @@ SCRIPTS = $(CS)/scripts
 .PHONY: all egfr hela k562 data harmonize features train evaluate benchmark figures test clean help
 
 help:
-	@echo "PTM-BDL Framework Pipeline"
+	@echo "PTM-BDL tool Pipeline"
 	@echo "======================================="
 	@echo ""
 	@echo "  Run a complete case study:"

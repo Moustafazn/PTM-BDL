@@ -1,5 +1,5 @@
 [project]
-name = "ptm-bdl-framework"
+name = "ptm-bdl"
 version = "0.1.0"
 description = "Multimodal Self-Attention with PTM Biological Dynamics Layer for Drug Response Prediction"
 readme = "README.md"

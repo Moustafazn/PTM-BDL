@@ -6,9 +6,9 @@ Trains the PTM-BDL model on the HeLa HDAC inhibitor dataset.
   - Cell line: HeLa (cervical carcinoma)
   - 6 drugs: Vorinostat, Romidepsin, CUDC-101, A485, A486, Curcumin
   - 2 PTM types: phosphorylation (S/T/Y) + acetylation (K) — NEW PTM type
-  - Proves PTM-BDL handles acetylation with zero framework code changes
+  - Proves PTM-BDL handles acetylation with zero tool code changes
 
-Uses the same framework packages as EGFR case study:
+Uses the same tool packages as EGFR case study:
   ptm_bdl.training  — train_epoch, validate, FocalLoss, build_model_from_cfg
   ptm_bdl.data      — ResistanceDataset, collate_fn, create_stratified_splits
 """
@@ -19,10 +19,14 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch.utils.data import Subset, DataLoader, WeightedRandomSampler
+from torch.utils.data import Subset, DataLoader
 
 from src.ptm_bdl.data import ResistanceDataset, collate_fn, create_stratified_splits
-from src.ptm_bdl.training import FocalLoss, train_epoch, validate, build_model_from_cfg, compute_optimal_threshold
+from src.ptm_bdl.training import (
+    FocalLoss, train_epoch, validate, build_model_from_cfg,
+    compute_optimal_threshold, save_checkpoint, load_checkpoint,
+    resolve_device, create_balanced_sampler,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 from src.ptm_bdl.config import load_config
@@ -38,23 +42,14 @@ def train():
     """Training pipeline for HeLa/HDAC case study."""
     print(f"╔══════════════════════════════════════════════════════════════╗")
     print(f"║  {CASE_STUDY} — Training                                   ║")
-    print(f"║  Framework: ptm_bdl.training + ptm_bdl.data                ║")
+    print(f"║  tool: ptm_bdl.training + ptm_bdl.data                ║")
     print(f"╚══════════════════════════════════════════════════════════════╝")
 
     seed = cfg["training"]["seed"]
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    device_str = cfg["training"]["device"]
-    if device_str == "auto":
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            device = torch.device("mps")
-        else:
-            device = torch.device("cpu")
-    else:
-        device = torch.device(device_str)
+    device = resolve_device(cfg)
     print(f"\n  Device: {device}")
 
     dataset_path = (PROJECT_ROOT / cfg["paths"]["processed_data"]
@@ -81,14 +76,7 @@ def train():
     train_set = Subset(dataset, train_idx)
     val_set = Subset(dataset, val_idx)
 
-    train_labels = dataset.df["resistance_label"].values[train_idx]
-    class_counts = np.bincount(train_labels.astype(int))
-    class_weights = 1.0 / np.maximum(class_counts, 1)
-    sample_weights = class_weights[train_labels.astype(int)]
-    sampler = WeightedRandomSampler(
-        weights=torch.from_numpy(sample_weights).float(),
-        num_samples=len(train_set), replacement=True,
-    )
+    sampler = create_balanced_sampler(dataset, train_idx)
 
     batch_size = cfg["model"]["batch_size"]
     train_loader = DataLoader(train_set, batch_size=batch_size,
@@ -133,7 +121,7 @@ def train():
         if val_score > best_val_score:
             best_val_score = val_score
             patience_counter = 0
-            torch.save(model.state_dict(), MODEL_DIR / "best_model_stage1.pt")
+            save_checkpoint(model, MODEL_DIR / "best_model_stage1.pt")
         else:
             patience_counter += 1
             if patience_counter >= patience:
@@ -147,7 +135,7 @@ def train():
 
     # ── Compute optimal classification threshold (Youden's J) ──────────────
     print(f"\n  Computing optimal threshold (Youden's J on validation set)...")
-    model.load_state_dict(torch.load(MODEL_DIR / "best_model.pt", map_location=device))
+    load_checkpoint(model, MODEL_DIR / "best_model.pt", device)
     threshold_info = compute_optimal_threshold(model, val_loader, device)
     with open(MODEL_DIR / "optimal_threshold.json", "w") as f:
         json.dump(threshold_info, f, indent=2)

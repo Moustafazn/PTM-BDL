@@ -18,11 +18,14 @@ from __future__ import annotations
 import numpy as np
 import torch
 from scipy import stats as scipy_stats
+from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import (
     mean_squared_error, roc_auc_score, average_precision_score,
     balanced_accuracy_score,
 )
 from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
+
+from src.ptm_bdl.training.trainer import compute_optimal_threshold
 
 
 def compute_cold_metrics(
@@ -62,6 +65,55 @@ def compute_cold_metrics(
     return metrics
 
 
+def make_inner_validation_split(
+        dataset,
+        candidate_indices: np.ndarray,
+        validation_fraction: float = 0.15,
+        seed: int = 42,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Split a training fold into fit and validation subsets.
+
+    The held-out cell, drug, or biological group must never be used for early
+    stopping, checkpoint selection, or threshold calibration.  This helper
+    therefore operates only on the candidate *training* indices supplied by a
+    parent evaluation fold.  It first attempts to preserve target-protein and
+    resistance-label strata, then falls back to resistance labels, and finally
+    uses a deterministic random split when a small cohort cannot be stratified.
+    """
+    candidate_indices = np.asarray(candidate_indices, dtype=int)
+    if candidate_indices.size < 3:
+        raise ValueError("An inner validation split requires at least three training rows.")
+
+    frame = dataset.df.iloc[candidate_indices]
+    labels = frame["resistance_label"].fillna(-1).astype(str).to_numpy()
+    if "target_protein" in frame.columns:
+        proteins = frame["target_protein"].fillna("unknown").astype(str).to_numpy()
+        strata_candidates = [np.char.add(np.char.add(proteins, "__"), labels), labels]
+    else:
+        strata_candidates = [labels]
+
+    for strata in strata_candidates:
+        _, counts = np.unique(strata, return_counts=True)
+        if len(counts) < 2 or counts.min() < 2:
+            continue
+        try:
+            splitter = StratifiedShuffleSplit(
+                n_splits=1, test_size=validation_fraction, random_state=seed,
+            )
+            fit_pos, validation_pos = next(splitter.split(np.zeros(candidate_indices.size), strata))
+            return candidate_indices[fit_pos], candidate_indices[validation_pos]
+        except ValueError:
+            continue
+
+    n_validation = min(
+        candidate_indices.size - 1,
+        max(1, int(round(candidate_indices.size * validation_fraction))),
+    )
+    rng = np.random.RandomState(seed)
+    shuffled = rng.permutation(candidate_indices)
+    return shuffled[n_validation:], shuffled[:n_validation]
+
+
 def run_leave_one_drug_out(
         dataset,
         drug_labels: np.ndarray,
@@ -71,6 +123,7 @@ def run_leave_one_drug_out(
         batch_size: int = 16,
         device: str = "cpu",
         min_test_samples: int = 5,
+        seed: int = 42,
 ) -> dict:
     """
     Leave-One-Drug-Out (LODO) cross-validation.
@@ -103,7 +156,7 @@ def run_leave_one_drug_out(
         train_mask = ~test_mask
 
         test_idx = np.where(test_mask)[0]
-        train_idx = np.where(train_mask)[0]
+        candidate_train_idx = np.where(train_mask)[0]
 
         if len(test_idx) < min_test_samples:
             print(f"    {drug}: {len(test_idx)} samples — SKIPPED (< {min_test_samples})")
@@ -112,10 +165,15 @@ def run_leave_one_drug_out(
                              "reason": f"< {min_test_samples} test samples"}
             continue
 
-        print(f"    {drug}: train={len(train_idx)}, test={len(test_idx)}")
+        train_idx, validation_idx = make_inner_validation_split(
+            dataset, candidate_train_idx, seed=seed,
+        )
+        print(f"    {drug}: train={len(train_idx)}, validation={len(validation_idx)}, "
+              f"test={len(test_idx)}")
 
         # Create data loaders
         train_subset = Subset(dataset, train_idx.tolist())
+        validation_subset = Subset(dataset, validation_idx.tolist())
         test_subset = Subset(dataset, test_idx.tolist())
 
         # Weighted sampler for class imbalance
@@ -133,6 +191,10 @@ def run_leave_one_drug_out(
             train_subset, batch_size=batch_size, sampler=sampler,
             collate_fn=collate_fn, num_workers=0,
         )
+        validation_loader = DataLoader(
+            validation_subset, batch_size=batch_size, shuffle=False,
+            collate_fn=collate_fn, num_workers=0,
+        )
         test_loader = DataLoader(
             test_subset, batch_size=batch_size, shuffle=False,
             collate_fn=collate_fn, num_workers=0,
@@ -140,7 +202,8 @@ def run_leave_one_drug_out(
 
         # Build and train fresh model
         model = build_model_fn()
-        model = train_fold_fn(model, train_loader, test_loader, device)
+        model = train_fold_fn(model, train_loader, validation_loader, device)
+        threshold = compute_optimal_threshold(model, validation_loader, device)["optimal_threshold"]
 
         # Collect predictions
         model.eval()
@@ -158,8 +221,6 @@ def run_leave_one_drug_out(
                     drug_embeddings=batch_dev.get("drug_emb"),
                     ptm_vector=batch_dev["ptm_vector"],
                     delta_ptm_vector=batch_dev["delta_ptm_vector"],
-                    secondary_vector=batch_dev.get("secondary_vector"),
-                    delta_secondary_vector=batch_dev.get("delta_secondary_vector"),
                     target_protein=batch_dev["target_protein"],
                 )
                 all_ic50_pred.append(ic50_pred.cpu().numpy())
@@ -172,9 +233,13 @@ def run_leave_one_drug_out(
         y_prob = np.concatenate(all_prob).flatten()
         y_true_cls = np.concatenate(all_cls_true).flatten()
 
-        fold_metrics = compute_cold_metrics(y_true_ic50, y_pred_ic50, y_true_cls, y_prob)
+        fold_metrics = compute_cold_metrics(
+            y_true_ic50, y_pred_ic50, y_true_cls, y_prob, threshold=threshold,
+        )
         fold_metrics["drug"] = drug
         fold_metrics["n_train"] = int(len(train_idx))
+        fold_metrics["n_validation"] = int(len(validation_idx))
+        fold_metrics["validation_threshold"] = float(threshold)
         results[drug] = fold_metrics
         all_metrics.append(fold_metrics)
 
@@ -204,7 +269,10 @@ def run_leave_one_drug_out(
 
     return {
         "method": "Leave-One-Drug-Out (LODO)",
-        "description": "Cold-drug evaluation: train on N-1 drugs, test on held-out drug",
+        "description": (
+            "Cold-drug evaluation: train on N-1 drugs, select checkpoints and "
+            "thresholds on an inner validation split, then test on the held-out drug"
+        ),
         "per_drug_results": results,
         "summary": summary,
     }
@@ -258,14 +326,20 @@ def run_cold_cell_evaluation(
         train_cells = set(np.array(unique_cells)[train_cell_idx])
         test_cells = set(np.array(unique_cells)[test_cell_idx])
 
-        train_sample_idx = np.where(np.isin(cell_labels, list(train_cells)))[0]
+        candidate_train_idx = np.where(np.isin(cell_labels, list(train_cells)))[0]
         test_sample_idx = np.where(np.isin(cell_labels, list(test_cells)))[0]
 
-        print(f"    Fold {fold_i+1}/{n_folds}: train={len(train_sample_idx)} samples "
+        train_sample_idx, validation_sample_idx = make_inner_validation_split(
+            dataset, candidate_train_idx, seed=seed + fold_i,
+        )
+
+        print(f"    Fold {fold_i+1}/{n_folds}: train={len(train_sample_idx)} samples, "
+              f"validation={len(validation_sample_idx)} samples "
               f"({len(train_cells)} cells), test={len(test_sample_idx)} samples "
               f"({len(test_cells)} cells)")
 
         train_subset = Subset(dataset, train_sample_idx.tolist())
+        validation_subset = Subset(dataset, validation_sample_idx.tolist())
         test_subset = Subset(dataset, test_sample_idx.tolist())
 
         train_labels = np.array([
@@ -280,11 +354,16 @@ def run_cold_cell_evaluation(
 
         train_loader = DataLoader(train_subset, batch_size=batch_size, sampler=sampler,
                                   collate_fn=collate_fn, num_workers=0)
+        validation_loader = DataLoader(
+            validation_subset, batch_size=batch_size, shuffle=False,
+            collate_fn=collate_fn, num_workers=0,
+        )
         test_loader = DataLoader(test_subset, batch_size=batch_size, shuffle=False,
-                                 collate_fn=collate_fn, num_workers=0)
+                                  collate_fn=collate_fn, num_workers=0)
 
         model = build_model_fn()
-        model = train_fold_fn(model, train_loader, test_loader, device)
+        model = train_fold_fn(model, train_loader, validation_loader, device)
+        threshold = compute_optimal_threshold(model, validation_loader, device)["optimal_threshold"]
 
         model.eval()
         all_ic50_pred, all_ic50_true, all_prob, all_cls_true = [], [], [], []
@@ -299,8 +378,6 @@ def run_cold_cell_evaluation(
                     drug_embeddings=batch_dev.get("drug_emb"),
                     ptm_vector=batch_dev["ptm_vector"],
                     delta_ptm_vector=batch_dev["delta_ptm_vector"],
-                    secondary_vector=batch_dev.get("secondary_vector"),
-                    delta_secondary_vector=batch_dev.get("delta_secondary_vector"),
                     target_protein=batch_dev["target_protein"],
                 )
                 all_ic50_pred.append(ic50_pred.cpu().numpy())
@@ -313,10 +390,15 @@ def run_cold_cell_evaluation(
         y_prob = np.concatenate(all_prob).flatten()
         y_true_cls = np.concatenate(all_cls_true).flatten()
 
-        fold_metrics = compute_cold_metrics(y_true_ic50, y_pred_ic50, y_true_cls, y_prob)
+        fold_metrics = compute_cold_metrics(
+            y_true_ic50, y_pred_ic50, y_true_cls, y_prob, threshold=threshold,
+        )
         fold_metrics["fold"] = fold_i + 1
         fold_metrics["n_train_cells"] = len(train_cells)
         fold_metrics["n_test_cells"] = len(test_cells)
+        fold_metrics["n_train"] = int(len(train_sample_idx))
+        fold_metrics["n_validation"] = int(len(validation_sample_idx))
+        fold_metrics["validation_threshold"] = float(threshold)
         results[f"fold_{fold_i+1}"] = fold_metrics
         all_metrics.append(fold_metrics)
 
@@ -339,7 +421,10 @@ def run_cold_cell_evaluation(
 
     return {
         "method": "Cold-cell K-fold CV (cell-line-level split)",
-        "description": "All samples from each cell line in either train or test — no cell line leakage",
+        "description": (
+            "All samples from each held-out cell line remain in the test fold; "
+            "checkpoint selection and threshold calibration use an inner validation split"
+        ),
         "per_fold_results": results,
         "summary": summary,
     }

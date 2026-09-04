@@ -29,6 +29,10 @@ class PTMBDLEncoder(nn.Module):
       - Type embedding size (from registry.n_subtypes)
       - Protein embedding size (from registry.n_proteins)
       - Per-protein type_id and pad masks (from registry buffers)
+
+    Accepts a single flat ``ptm_vector`` of size ``n_tokens`` containing
+    ALL PTM sites across all modification types.  Per-type differentiation
+    is handled by the type embedding and type gate.
     """
 
     def __init__(self, registry: PTMTypeRegistry, d_model: int = 64,
@@ -71,20 +75,18 @@ class PTMBDLEncoder(nn.Module):
         self.register_buffer("type_id_table", registry.type_id_table.clone(), persistent=False)
         self.register_buffer("is_real_table", registry.is_real_table.clone(), persistent=False)
 
-    def _stitch(self, ptm_channels: list[torch.Tensor],
-                delta_channels: list[torch.Tensor]) -> torch.Tensor:
+    def _stitch(self, levels: torch.Tensor,
+                deltas: torch.Tensor) -> torch.Tensor:
         """[level, delta, ratio] per token → (B, n_tokens, 3)."""
-        levels = torch.cat(ptm_channels, dim=1)
-        deltas = torch.cat(delta_channels, dim=1)
         ratios = deltas / (levels.abs() + 1e-6)
         return torch.stack([levels, deltas, ratios], dim=-1)
 
-    def _build_tokens(self, ptm_channels: list[torch.Tensor],
-                      delta_channels: list[torch.Tensor],
+    def _build_tokens(self, levels: torch.Tensor,
+                      deltas: torch.Tensor,
                       protein_id: torch.Tensor):
         """value_proj → type gate → embeddings → pad mask."""
-        device = ptm_channels[0].device
-        projected = self.value_proj(self._stitch(ptm_channels, delta_channels))
+        device = levels.device
+        projected = self.value_proj(self._stitch(levels, deltas))
         type_ids_b = self.type_id_table[protein_id]
         is_real_b = self.is_real_table[protein_id]
 
@@ -112,16 +114,13 @@ class PTMBDLEncoder(nn.Module):
 
         return token_emb, key_padding_mask, is_real_b, type_ids_b
 
-    def forward(self, ptm_vector, delta_ptm_vector, secondary_vector,
-                delta_secondary_vector, target_protein) -> dict:
+    def forward(self, ptm_vector, delta_ptm_vector, target_protein) -> dict:
         """
         Forward pass through the PTM-BDL encoder.
 
         Args:
-            ptm_vector: (B, primary_dim) — primary PTM baseline levels
-            delta_ptm_vector: (B, primary_dim) — drug-induced primary PTM changes
-            secondary_vector: (B, secondary_dim) — secondary PTM baseline levels
-            delta_secondary_vector: (B, secondary_dim) — drug-induced secondary PTM changes
+            ptm_vector: (B, n_tokens) — PTM baseline levels (all types, flat)
+            delta_ptm_vector: (B, n_tokens) — drug-induced PTM changes (all types, flat)
             target_protein: (B,) long — protein ID index
 
         Returns:
@@ -129,9 +128,7 @@ class PTMBDLEncoder(nn.Module):
         """
         protein_id = target_protein.clamp(min=0, max=self.is_real_table.size(0) - 1).long()
         token_emb, kpm, is_real_b, type_ids_b = self._build_tokens(
-            [ptm_vector, secondary_vector],
-            [delta_ptm_vector, delta_secondary_vector],
-            protein_id,
+            ptm_vector, delta_ptm_vector, protein_id,
         )
 
         pre_attn = token_emb  # save for residual gate
@@ -153,14 +150,11 @@ class PTMBDLEncoder(nn.Module):
 
     @torch.no_grad()
     def compute_attn_weights(self, ptm_vector, delta_ptm_vector,
-                             secondary_vector, delta_secondary_vector,
                              target_protein) -> torch.Tensor:
         """Post-softmax attention from FINAL layer → (B, n_tokens, n_tokens). For XAI."""
         protein_id = target_protein.clamp(min=0, max=self.is_real_table.size(0) - 1).long()
         token_emb, kpm, _, _ = self._build_tokens(
-            [ptm_vector, secondary_vector],
-            [delta_ptm_vector, delta_secondary_vector],
-            protein_id,
+            ptm_vector, delta_ptm_vector, protein_id,
         )
         x = token_emb
         for layer in self.transformer.layers[:-1]:

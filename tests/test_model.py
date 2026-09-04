@@ -57,8 +57,6 @@ class TestForwardPass:
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                secondary_vector=batch["secondary_vector"],
-                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
             )
 
@@ -79,27 +77,29 @@ class TestForwardPass:
 
     @staticmethod
     def test_batch_size_one(model):
+        n_tokens = model.registry.n_tokens
         model.eval()
         with torch.no_grad():
             ic50, _r = model(
                 seq_embeddings=torch.randn(1, 10, 1280),
                 struct_embeddings=torch.randn(1, 8, 512),
                 drug_pooled=torch.randn(1, 384),
-                ptm_vector=torch.ones(1, 12),
-                delta_ptm_vector=torch.zeros(1, 12),
+                ptm_vector=torch.ones(1, n_tokens),
+                delta_ptm_vector=torch.zeros(1, n_tokens),
             )
         assert ic50.shape == (1, 1)
 
     @staticmethod
     def test_without_optional_inputs(model):
+        n_tokens = model.registry.n_tokens
         model.eval()
         with torch.no_grad():
             ic50, _r = model(
                 seq_embeddings=torch.randn(2, 10, 1280),
                 struct_embeddings=torch.randn(2, 8, 512),
                 drug_pooled=torch.randn(2, 384),
-                ptm_vector=torch.ones(2, 12),
-                delta_ptm_vector=torch.zeros(2, 12),
+                ptm_vector=torch.ones(2, n_tokens),
+                delta_ptm_vector=torch.zeros(2, n_tokens),
             )
         assert ic50.shape == (2, 1)
 
@@ -114,8 +114,6 @@ class TestForwardPass:
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                secondary_vector=batch["secondary_vector"],
-                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
                 return_attention=True,
             )
@@ -132,8 +130,6 @@ class TestForwardPass:
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                secondary_vector=batch["secondary_vector"],
-                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
                 return_ptm_bdl=True,
             )
@@ -152,34 +148,20 @@ class TestGradientFlow:
             seq_embeddings=batch["seq_emb"], struct_embeddings=batch["struct_emb"],
             drug_pooled=batch["drug_pooled"], drug_embeddings=batch["drug_emb"],
             ptm_vector=ptm, delta_ptm_vector=batch["delta_ptm_vector"],
-            secondary_vector=batch["secondary_vector"],
-            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
         resist.sum().backward()
         assert ptm.grad is not None and ptm.grad.abs().sum() > 0
 
     @staticmethod
-    def test_secondary_grads(model, batch):
-        secondary = batch["secondary_vector"].clone().requires_grad_(True)
-        ic50, _ = model(
-            seq_embeddings=batch["seq_emb"], struct_embeddings=batch["struct_emb"],
-            drug_pooled=batch["drug_pooled"], drug_embeddings=batch["drug_emb"],
-            ptm_vector=batch["ptm_vector"], delta_ptm_vector=batch["delta_ptm_vector"],
-            secondary_vector=secondary, delta_secondary_vector=batch["delta_secondary_vector"],
-            target_protein=batch["target_protein"],
-        )
-        ic50.sum().backward()
-        assert secondary.grad is not None and secondary.grad.abs().sum() > 0
-
-    @staticmethod
     def test_seq_grads(model, batch):
+        n_tokens = model.registry.n_tokens
         seq = batch["seq_emb"].clone().requires_grad_(True)
         _, resist = model(
             seq_embeddings=seq, struct_embeddings=batch["struct_emb"],
             drug_pooled=batch["drug_pooled"],
-            ptm_vector=batch["ptm_vector"],
-            delta_ptm_vector=batch["delta_ptm_vector"],
+            ptm_vector=torch.ones(seq.size(0), n_tokens),
+            delta_ptm_vector=torch.zeros(seq.size(0), n_tokens),
         )
         resist.sum().backward()
         assert seq.grad.abs().sum() > 0
@@ -206,25 +188,26 @@ class TestComponents:
 class TestSensitivity:
 
     @staticmethod
-    def test_ptm_change_changes_output(model, batch):
+    def test_ptm_change_changes_output(model):
+        n_tokens = model.registry.n_tokens
         model.eval()
         with torch.no_grad():
             _, r1 = model(
-                seq_embeddings=batch["seq_emb"][:1],
-                struct_embeddings=batch["struct_emb"][:1],
-                drug_pooled=batch["drug_pooled"][:1],
-                ptm_vector=torch.ones(1, 12),
-                delta_ptm_vector=torch.zeros(1, 12),
+                seq_embeddings=torch.randn(1, 10, 1280),
+                struct_embeddings=torch.randn(1, 8, 512),
+                drug_pooled=torch.randn(1, 384),
+                ptm_vector=torch.ones(1, n_tokens),
+                delta_ptm_vector=torch.zeros(1, n_tokens),
                 target_protein=torch.tensor([0]),
             )
-            ptm_mod = torch.ones(1, 12)
-            ptm_mod[0, 7] = 5.0  # Y1092 up 5x
+            ptm_mod = torch.ones(1, n_tokens)
+            ptm_mod[0, 7] = 5.0  # Modify one PTM site
             _, r2 = model(
-                seq_embeddings=batch["seq_emb"][:1],
-                struct_embeddings=batch["struct_emb"][:1],
-                drug_pooled=batch["drug_pooled"][:1],
+                seq_embeddings=torch.randn(1, 10, 1280),
+                struct_embeddings=torch.randn(1, 8, 512),
+                drug_pooled=torch.randn(1, 384),
                 ptm_vector=ptm_mod,
-                delta_ptm_vector=torch.zeros(1, 12),
+                delta_ptm_vector=torch.zeros(1, n_tokens),
                 target_protein=torch.tensor([0]),
             )
         assert not torch.allclose(r1, r2, atol=1e-6)

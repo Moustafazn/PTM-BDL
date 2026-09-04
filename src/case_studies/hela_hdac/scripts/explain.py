@@ -52,6 +52,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 from src.ptm_bdl.data.dataset import ResistanceDataset
 from src.ptm_bdl.training.factory import build_model_from_cfg
+from src.ptm_bdl.training import load_checkpoint, resolve_device
 from src.ptm_bdl.xai.integrated_gradients import compute_ig_batch
 from src.ptm_bdl.xai.attention import compute_cross_type_attention
 from src.ptm_bdl.config import load_config
@@ -105,8 +106,6 @@ def _predict_single(model, sample, device=None):
             drug_embeddings=batch["drug_emb"],
             ptm_vector=batch["ptm_vector"],
             delta_ptm_vector=batch["delta_ptm_vector"],
-            secondary_vector=batch["secondary_vector"],
-            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
     return float(ic50_pred.item()), float(torch.sigmoid(resist_logits).item())
@@ -285,6 +284,9 @@ def compute_per_drug_ig(model, dataset, indices, n_steps=20):
     ptm_cols = dataset._ptm_cols
     sec_cols = dataset._secondary_cols
     per_drug = {}
+    n_ptm = len(ptm_cols)
+    n_sec = len(sec_cols) if sec_cols else 0
+    n_total = n_ptm + n_sec
 
     for drug in sorted(df.iloc[indices]["drug_name"].unique()):
         drug_mask = df.iloc[indices]["drug_name"] == drug
@@ -294,19 +296,20 @@ def compute_per_drug_ig(model, dataset, indices, n_steps=20):
 
         drug_ig = compute_ig_batch(model, dataset, drug_idx, n_steps=n_steps)
 
-        # Aggregate
-        total_phospho = np.zeros(len(ptm_cols))
-        total_acetyl = np.zeros(len(sec_cols)) if sec_cols else np.zeros(0)
+        # Aggregate — ptm_vector from IG contains ALL tokens (phospho + acetyl)
+        total_phospho = np.zeros(n_ptm)
+        total_acetyl = np.zeros(n_sec) if n_sec > 0 else np.zeros(0)
         total_n = 0
         for pid, data in drug_ig.items():
             n = data.get("n_samples", 0)
-            total_phospho += np.abs(data.get("ptm_vector", np.zeros(len(ptm_cols)))) * n
-            if sec_cols:
-                total_acetyl += np.abs(data.get("secondary_vector", np.zeros(len(sec_cols)))) * n
+            full_attr = np.abs(data.get("ptm_vector", np.zeros(n_total)))
+            total_phospho += full_attr[:n_ptm] * n
+            if n_sec > 0 and len(full_attr) > n_ptm:
+                total_acetyl += full_attr[n_ptm:n_ptm + n_sec] * n
             total_n += n
         if total_n > 0:
             total_phospho /= total_n
-            if sec_cols:
+            if n_sec > 0:
                 total_acetyl /= total_n
 
         # Drug class
@@ -364,12 +367,11 @@ def explain():
     model = build_model_from_cfg(cfg).to(device)
     model_path = MODEL_DIR / "best_model.pt"
     if model_path.exists():
-        model.load_state_dict(torch.load(model_path, map_location=device,
-                                         weights_only=True))
+        load_checkpoint(model, model_path, device)
         print(f"  ✓ Loaded: {model_path.name}")
     else:
         print(f"  ⚠ No trained model — using random weights (demo)")
-    model.eval()
+        model.eval()
 
     # ── PART 1: Predictions + group analysis ─────────────────────────────
     print("\n  PART 1: Per-sample predictions + group analysis")

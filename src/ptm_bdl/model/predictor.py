@@ -3,7 +3,7 @@ Multimodal Resistance Predictor — Full two-stage fusion model.
 
 Two-stage fusion architecture:
     Stage 1 (static):  seq + struct + drug → joint attention → S_rep
-    Stage 2 (dynamic): PTM-BDL(primary, secondary, type_gate, attn, residual_gate) → P_rep
+    Stage 2 (dynamic): PTM-BDL(ptm_vector, type_gate, attn, residual_gate) → P_rep
     Fusion:            S_rep ⊙ P_rep → prediction heads
 """
 
@@ -25,7 +25,7 @@ class MultimodalResistancePredictor(nn.Module):
 
     Two-stage fusion:
       Stage 1 (static): seq + struct + drug → joint attention → S_rep
-      Stage 2 (dynamic): PTM-BDL(primary, secondary, ...) → P_rep
+      Stage 2 (dynamic): PTM-BDL(ptm_vector, delta_ptm_vector, ...) → P_rep
       Fusion: S_rep ⊙ P_rep → prediction heads (IC50 regression + resistance classification)
 
     All PTM configuration (types, subtypes, proteins, pad masks) comes from the
@@ -94,7 +94,6 @@ class MultimodalResistancePredictor(nn.Module):
     def forward(
             self, seq_embeddings, struct_embeddings, drug_pooled,
             ptm_vector, delta_ptm_vector,
-            secondary_vector=None, delta_secondary_vector=None,
             target_protein=None, drug_embeddings=None,
             return_attention=False, return_ptm_bdl=False,
     ):
@@ -103,16 +102,6 @@ class MultimodalResistancePredictor(nn.Module):
         L = seq_embeddings.size(1)
         M = struct_embeddings.size(1)
 
-        # Default secondary channel dimension from registry (generic)
-        if len(self.registry.ptm_type_order) >= 2:
-            secondary_type = self.registry.ptm_type_order[1]
-            secondary_dim = self.registry.get_n_sites_per_type(secondary_type)
-        else:
-            secondary_dim = 0
-        if secondary_vector is None:
-            secondary_vector = torch.zeros(B, secondary_dim, device=device)
-        if delta_secondary_vector is None:
-            delta_secondary_vector = torch.zeros(B, secondary_dim, device=device)
         if target_protein is None:
             target_protein = torch.zeros(B, dtype=torch.long, device=device)
         else:
@@ -148,8 +137,8 @@ class MultimodalResistancePredictor(nn.Module):
 
         # ── DYNAMIC PTM-BDL branch → P_rep ──────────────────────────────
         bdl_out = self.ptm_bdl(
-            ptm_vector=ptm_vector, delta_ptm_vector=delta_ptm_vector,
-            secondary_vector=secondary_vector, delta_secondary_vector=delta_secondary_vector,
+            ptm_vector=ptm_vector,
+            delta_ptm_vector=delta_ptm_vector,
             target_protein=target_protein,
         )
         ptm_bdl_pooled = bdl_out["pooled"]  # (B, ptm_bdl_d_model)

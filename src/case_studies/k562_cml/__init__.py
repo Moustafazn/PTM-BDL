@@ -13,5 +13,5 @@ What this case study proves:
   1. Different cancer type: CML (hematological) ≠ NSCLC/breast (epithelial)
   2. Different kinase target: BCR-ABL ≠ EGFR/HER2
   3. Non-TKI drugs: Cytarabine, Paclitaxel, Methotrexate are chemotherapy
-  4. Same framework code with different config
+  4. Same tool code with different config
 """

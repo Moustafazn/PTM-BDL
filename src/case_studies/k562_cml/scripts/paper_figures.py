@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CS3 (K562/CML) — Publication Figures (Updated).
+K562/CML) — Publication Figures (Updated).
 
 Generates all main-text and supplementary figures addressing professor feedback:
   - Fig_S_cold_start:      Cold-cell + cold-drug LODO (Q4)
@@ -96,7 +96,7 @@ def fig_benchmarking(results, plt):
     axes[1].set_xlabel("RMSE"); axes[1].set_title("(b) Regression", fontsize=9, fontweight="bold")
     for i, v in enumerate(rmses): axes[1].text(v + 0.01, i, f"{v:.3f}", va="center", fontsize=6)
 
-    plt.suptitle("CS3: K562/CML — Benchmarking", fontsize=11, fontweight="bold")
+    plt.suptitle("K562/CML: K562/CML — Benchmarking", fontsize=11, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_benchmarking")
 
@@ -115,7 +115,7 @@ def fig_ablation(results, plt):
     ax.barh(labels, deltas, color=colors)
     ax.axvline(0, color="black", linewidth=0.5)
     ax.set_xlabel("Δ AUROC (Ablated − Full)")
-    ax.set_title(f"CS3 Ablation (Full AUROC={full_auroc:.3f})", fontsize=9, fontweight="bold")
+    ax.set_title(f"K562/CML Ablation (Full AUROC={full_auroc:.3f})", fontsize=9, fontweight="bold")
     plt.tight_layout()
     _save(fig, plt, "Fig_ablation")
 
@@ -158,7 +158,7 @@ def fig_s_loclo(results, plt):
         ax.set_xticks(x); ax.set_xticklabels(groups, rotation=45, ha="right", fontsize=6)
         ax.set_ylabel(ylabel)
         for i, (v, n) in enumerate(zip(vals, ns)): ax.text(i, v + 0.01, f"n={n}", ha="center", fontsize=5)
-    plt.suptitle("CS3: LOCLO by Leukemia Subtype / Tissue", fontsize=10, fontweight="bold")
+    plt.suptitle("K562/CML: LOCLO by Leukemia Subtype / Tissue", fontsize=10, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_loclo")
 
@@ -198,10 +198,16 @@ def fig_s_cold_start(results, plt):
 def fig_s_cross_dataset(results, plt):
     cd = results.get("cross_dataset_ctrp")
     if not cd or "per_drug" not in cd: print("  ⚠ No cross-dataset"); return
+    records = [
+        (drug, metrics) for drug, metrics in sorted(cd["per_drug"].items())
+        if ("pred_vs_ctrp_pearson_r" in metrics
+            and "gdsc_vs_ctrp_pearson_r" in metrics)
+    ]
+    if not records: print("  ⚠ No estimable cross-dataset correlations"); return
     fig, ax = plt.subplots(figsize=(SINGLE_COL * 1.2, SINGLE_COL * 0.9))
-    drugs = sorted(cd["per_drug"].keys())
-    pred_r = [cd["per_drug"][d].get("pred_vs_ctrp_pearson_r", 0) or 0 for d in drugs]
-    gdsc_r = [cd["per_drug"][d].get("gdsc_vs_ctrp_pearson_r", 0) or 0 for d in drugs]
+    drugs = [drug for drug, _ in records]
+    pred_r = [metrics["pred_vs_ctrp_pearson_r"] for _, metrics in records]
+    gdsc_r = [metrics["gdsc_vs_ctrp_pearson_r"] for _, metrics in records]
     x = np.arange(len(drugs)); w = 0.35
     ax.bar(x - w/2, gdsc_r, w, label="GDSC→CTRP (raw)", color="#009E73")
     ax.bar(x + w/2, pred_r, w, label="PTM-BDL→CTRP", color=COLORS["ours"])
@@ -235,7 +241,7 @@ def fig_s_stability(results, plt):
         concordant = d.get("cross_seed_top_concordant", False)
         ax.set_title(f"{protein}\nTop: {top} ({'concordant' if concordant else 'varies'})",
                      fontsize=9, fontweight="bold")
-    plt.suptitle("CS3: IG Stability Across Seeds", fontsize=11, fontweight="bold")
+    plt.suptitle("K562/CML: IG Stability Across Seeds", fontsize=11, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_stability")
 
@@ -272,7 +278,7 @@ def fig_s_calibration(results, plt):
         if idx >= n_panels: break
         _plot_rel(axes[idx], per_drug[drug], drug[:10])
         idx += 1
-    plt.suptitle("CS3: Reliability Diagrams", fontsize=10, fontweight="bold")
+    plt.suptitle("K562/CML: Reliability Diagrams", fontsize=10, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_calibration")
 
@@ -302,7 +308,7 @@ def fig_s_baseline_ablation(results, plt):
         ax.set_ylabel(ylabel)
         for i, v in enumerate(vals): ax.text(i, v + 0.005, f"{v:.3f}", ha="center", fontsize=6)
         ax.set_title(f"({'a' if panel == 0 else 'b'}) {ylabel}", fontsize=9, fontweight="bold")
-    plt.suptitle("CS3: Baseline-Only vs Delta-Only PTM Ablation", fontsize=10, fontweight="bold")
+    plt.suptitle("K562/CML: Baseline-Only vs Delta-Only PTM Ablation", fontsize=10, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     _save(fig, plt, "Fig_S_baseline_ablation")
 
@@ -311,7 +317,7 @@ def fig_s_baseline_ablation(results, plt):
 
 def main():
     print("╔══════════════════════════════════════════════════════════════╗")
-    print("║  CS3 (K562/CML) — Publication Figures (Updated)            ║")
+    print("║  K562/CML) — Publication Figures (Updated)            ║")
     print("╚══════════════════════════════════════════════════════════════╝")
     plt = setup_matplotlib()
     results = load_results()
@@ -331,7 +337,7 @@ def main():
 
     generated = list(FIGURES_DIR.glob("*.pdf"))
     print(f"\n  ✓ Generated {len(generated)} figures in {FIGURES_DIR}")
-    print("✓ CS3 figures complete!")
+    print("✓ K562/CML figures complete!")
 
 
 if __name__ == "__main__":

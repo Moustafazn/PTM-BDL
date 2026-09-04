@@ -218,14 +218,15 @@ class TestBuildModel:
     @staticmethod
     def test_model_forward_works(cfg):
         model = build_model_from_cfg_fn(cfg)
+        n_tokens = model.registry.n_tokens
         model.eval()
         with torch.no_grad():
             ic50, _resist = model(
                 seq_embeddings=torch.randn(1, 10, 1280),
                 struct_embeddings=torch.randn(1, 8, 512),
                 drug_pooled=torch.randn(1, 384),
-                ptm_vector=torch.ones(1, 12),
-                delta_ptm_vector=torch.zeros(1, 12),
+                ptm_vector=torch.ones(1, n_tokens),
+                delta_ptm_vector=torch.zeros(1, n_tokens),
             )
         assert ic50.shape == (1, 1)
 
@@ -248,8 +249,6 @@ class TestTrainingSanity:
             drug_embeddings=batch["drug_emb"],
             ptm_vector=batch["ptm_vector"],
             delta_ptm_vector=batch["delta_ptm_vector"],
-            secondary_vector=batch["secondary_vector"],
-            delta_secondary_vector=batch["delta_secondary_vector"],
             target_protein=batch["target_protein"],
         )
 
@@ -276,8 +275,6 @@ class TestTrainingSanity:
                 drug_embeddings=batch["drug_emb"],
                 ptm_vector=batch["ptm_vector"],
                 delta_ptm_vector=batch["delta_ptm_vector"],
-                secondary_vector=batch["secondary_vector"],
-                delta_secondary_vector=batch["delta_secondary_vector"],
                 target_protein=batch["target_protein"],
             )
             loss = ((ic50 - batch["ln_ic50"]) ** 2).mean()

@@ -8,9 +8,9 @@
 ║                                                                              ║
 ║  PART 1 — FEATURE & ARCHITECTURE ABLATIONS                                  ║
 ║    Symmetric across the two PTM channels (phospho ⊕ acetyl):               ║
-║      no_ptm              — ALL PTM features zeroed (static baseline)        ║
-║      no_secondary        — phospho channel only (drops acetylation)         ║
-║      secondary_only      — acetyl channel only (drops phosphorylation)      ║
+║      no_ptm              — PTMs reset to reference state (baseline=1, Δ=0)  ║
+║      no_acetyl        — phospho channel only (drops acetylation)         ║
+║      acetyl_only      — acetyl channel only (drops phosphorylation)      ║
 ║      no_drug             — drug embeddings zeroed                            ║
 ║      no_structure        — GearNet structural embeddings zeroed              ║
 ║      no_typed_attention  — PTM-BDL with MLP in place of typed self-attn    ║
@@ -54,7 +54,7 @@ from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
-# ── Import from framework packages ──────────────────────────────────────────
+# ── Import from tool packages ──────────────────────────────────────────
 from src.ptm_bdl.data.dataset import ResistanceDataset
 from src.ptm_bdl.data.collate import collate_fn
 from src.ptm_bdl.training.loss import FocalLoss
@@ -187,7 +187,7 @@ def _train_loop(model, train_loader, val_loader, focal_loss, device, save_path):
 ABLATION_CONFIGS = {
     "no_ptm": dict(
         label="Model A: No PTM",
-        description="All PTM features (phospho + acetyl) zeroed — static baseline.",
+        description="All phospho- and acetyl-site levels reset to baseline 1.0 and deltas to 0.0.",
         color="#d62728", use_typed_attention=True, data_mode="no_ptm",
     ),
     "baseline_only": dict(
@@ -202,15 +202,17 @@ ABLATION_CONFIGS = {
                     "Isolates purely dynamic pharmacodynamic signal.",
         color="#17becf", use_typed_attention=True, data_mode="delta_only",
     ),
-    "no_secondary": dict(
+    "no_acetyl": dict(
         label="Model B: No Acetyl",
-        description="Phospho channel active, acetyl channel zeroed.",
-        color="#9467bd", use_typed_attention=True, data_mode="no_secondary",
+        description="Phospho channel active, acetyl channel zeroed via zero_slot_range.",
+        color="#9467bd", use_typed_attention=True, data_mode="full",
+        zero_ptm_type="secondary",  # zero secondary slots via registry
     ),
-    "secondary_only": dict(
+    "acetyl_only": dict(
         label="Model C: Acetyl Only",
-        description="Acetyl channel active, phospho channel zeroed.",
-        color="#8c564b", use_typed_attention=True, data_mode="secondary_only",
+        description="Acetyl channel active, phospho channel zeroed via zero_slot_range.",
+        color="#8c564b", use_typed_attention=True, data_mode="full",
+        zero_ptm_type="primary",  # zero primary slots via registry
     ),
     "no_drug": dict(
         label="Model D: No Drug",
@@ -244,64 +246,116 @@ ABLATION_CONFIGS["measured_only"] = dict(
 
 ABLATION_ORDER = [
     "no_ptm", "baseline_only", "delta_only", "measured_only",
-    "no_secondary", "secondary_only",
+    "no_acetyl", "acetyl_only",
     "no_drug", "no_structure", "no_typed_attention", "full",
 ]
 
 
+# ── Inference-only vs retrained ablation ──────────────────────────────
+# Data-level arms use the production best_model.pt with ablated inputs.
+# Architecture arms (no_typed_attention) retrain with 3 seeds.
+# Ref: Fisher et al., JMLR 2019 — input ablation on a fixed model.
+_RETRAIN_ARMS = {"no_typed_attention"}
+_RETRAIN_SEEDS = [42, 123, 456]
+
+
+def _resolve_zero_slot_range(spec):
+    if "zero_ptm_type" not in spec:
+        return None
+    from src.ptm_bdl.registry import PTMTypeRegistry
+    registry = PTMTypeRegistry.from_config(cfg)
+    return registry.get_ptm_type_slot_range(spec["zero_ptm_type"])
+
+
+def _infer_ablation(spec, model, dataset_path, features_dir,
+                    val_idx, test_idx, device):
+    zsr = _resolve_zero_slot_range(spec)
+    dataset = ResistanceDataset(dataset_path, features_dir,
+                                ablation_mode=spec["data_mode"],
+                                zero_slot_range=zsr)
+    bs = cfg["model"]["batch_size"]
+    val_ld = DataLoader(Subset(dataset, val_idx), batch_size=bs,
+                        shuffle=False, collate_fn=collate_fn)
+    test_ld = DataLoader(Subset(dataset, test_idx), batch_size=bs,
+                         shuffle=False, collate_fn=collate_fn)
+    fl = FocalLoss(alpha=0.25, gamma=2.0)
+    return validate(model, val_ld, fl, 1.0, 2.0, device), \
+           validate(model, test_ld, fl, 1.0, 2.0, device)
+
+
+def _retrain_ablation(mode_key, spec, dataset_path, features_dir,
+                      train_idx, val_idx, test_idx, device):
+    seed_metrics = []
+    for seed in _RETRAIN_SEEDS:
+        torch.manual_seed(seed); np.random.seed(seed)
+        ds = ResistanceDataset(dataset_path, features_dir,
+                               ablation_mode=spec["data_mode"])
+        trl, vll, tel = _make_loaders(ds, train_idx, val_idx, test_idx)
+        mdl = build_model_from_cfg(
+            cfg, use_typed_attention=spec["use_typed_attention"]).to(device)
+        fl = FocalLoss(alpha=0.25, gamma=2.0)
+        sp = MODEL_DIR / f"ablation_{mode_key}_s{seed}.pt"
+        _, ne = _train_loop(mdl, trl, vll, fl, device, sp)
+        mdl.load_state_dict(torch.load(sp, map_location=device,
+                                       weights_only=True))
+        vm = validate(mdl, vll, fl, 1.0, 2.0, device)
+        tm = validate(mdl, tel, fl, 1.0, 2.0, device)
+        print(f"      seed={seed}: AUROC={tm.get('auroc',0):.3f}, "
+              f"BAcc={tm['balanced_acc']:.3f}  ({ne} ep)")
+        seed_metrics.append({"val_metrics": vm, "test_metrics": tm,
+                             "training_epochs": ne, "seed": seed})
+    aurocs = [s["test_metrics"].get("auroc", 0) for s in seed_metrics]
+    mid = int(np.argsort(aurocs)[len(aurocs) // 2])
+    agg = {}
+    for k in ["auroc", "balanced_acc", "rmse", "pearson_r", "auprc_sensitive"]:
+        vals = [s["test_metrics"].get(k, 0) for s in seed_metrics]
+        agg[k] = {"mean": round(float(np.mean(vals)), 4),
+                   "std": round(float(np.std(vals)), 4)}
+    return seed_metrics[mid]["val_metrics"], seed_metrics[mid]["test_metrics"], \
+           seed_metrics[mid]["training_epochs"], agg
+
+
 def train_ablation_model(mode_key, dataset_path, features_dir,
-                         train_idx, val_idx, test_idx, device):
+                         train_idx, val_idx, test_idx, device,
+                         production_model=None):
     spec = ABLATION_CONFIGS[mode_key]
+    retrain = mode_key in _RETRAIN_ARMS
+    tag = "retrain ×3 seeds" if retrain else "inference-only"
     print(f"\n  {'─' * 60}")
-    print(f"  {spec['label']}")
+    print(f"  {spec['label']}  ({tag})")
     print(f"  {spec['description']}")
     print(f"  {'─' * 60}")
-
-    seed = cfg["training"]["seed"]
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-    # KEY FIX: pass ablation_mode to ResistanceDataset
-    dataset = ResistanceDataset(dataset_path, features_dir,
-                                ablation_mode=spec["data_mode"])
-    train_loader, val_loader, test_loader = _make_loaders(
-        dataset, train_idx, val_idx, test_idx)
-
-    model = build_model_from_cfg(
-        cfg, use_typed_attention=spec["use_typed_attention"]).to(device)
-    focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
-    save_path = MODEL_DIR / f"ablation_{mode_key}.pt"
-
-    t0 = time.time()
-    best_score, n_epochs = _train_loop(
-        model, train_loader, val_loader, focal_loss, device, save_path)
+    t0 = time.time(); agg = None; n_epochs = 0
+    if retrain:
+        val_m, test_m, n_epochs, agg = _retrain_ablation(
+            mode_key, spec, dataset_path, features_dir,
+            train_idx, val_idx, test_idx, device)
+    else:
+        val_m, test_m = _infer_ablation(
+            spec, production_model, dataset_path, features_dir,
+            val_idx, test_idx, device)
     elapsed = time.time() - t0
-
-    # Reload best model and evaluate on both val and test sets
-    model.load_state_dict(torch.load(save_path, map_location=device,
-                                     weights_only=True))
-    val_m = validate(model, val_loader, focal_loss, 1.0, 2.0, device)
-    test_m = validate(model, test_loader, focal_loss, 1.0, 2.0, device)
-    print(f"    Test: BAcc={test_m['balanced_acc']:.3f}, "
-          f"AUROC={test_m.get('auroc', 0):.3f}, "
-          f"RMSE={test_m.get('rmse', 0):.3f}, "
-          f"R={test_m.get('pearson_r', 0):.3f}  ({n_epochs} epochs / {elapsed:.0f}s)")
-
-    return {
-        "label": spec["label"],
-        "description": spec["description"],
-        "val_metrics": val_m,
-        "test_metrics": test_m,
-        "training_epochs": n_epochs,
-        "training_time_seconds": round(elapsed, 1),
-        "use_typed_attention": spec["use_typed_attention"],
-        "data_mode": spec["data_mode"],
-    }
+    print(f"    Test: AUROC={test_m.get('auroc',0):.3f}, "
+          f"BAcc={test_m['balanced_acc']:.3f}, "
+          f"RMSE={test_m.get('rmse',0):.3f}, "
+          f"R={test_m.get('pearson_r',0):.3f}  ({elapsed:.0f}s)")
+    result = {"label": spec["label"], "description": spec["description"],
+              "val_metrics": val_m, "test_metrics": test_m,
+              "training_epochs": n_epochs,
+              "training_time_seconds": round(elapsed, 1),
+              "use_typed_attention": spec["use_typed_attention"],
+              "data_mode": spec["data_mode"],
+              "method": "retrained" if retrain else "inference_only"}
+    if agg:
+        result["multi_seed"] = agg
+    return result
 
 
 def run_ablation_study(device):
     print("\n══════════════════════════════════════════════════════════════")
     print("PART 1: PTM-BDL Feature & Architecture Ablations")
+    print("  Data-level arms: inference-only on best_model.pt")
+    print("  Architecture arms: retrained ×3 seeds")
     print("══════════════════════════════════════════════════════════════")
 
     train_idx, val_idx, test_idx = _load_split()
@@ -311,11 +365,22 @@ def run_ablation_study(device):
                     / CASE_STUDY / "multimodal_dataset.csv")
     features_dir = PROJECT_ROOT / cfg["paths"]["features"]
 
+    prod_path = MODEL_DIR / "best_model.pt"
+    if not prod_path.exists():
+        raise FileNotFoundError(
+            f"best_model.pt not found at {prod_path}. Run train.py first.")
+    prod_model = build_model_from_cfg(cfg).to(device)
+    prod_model.load_state_dict(torch.load(prod_path, map_location=device,
+                                          weights_only=True))
+    prod_model.eval()
+    print(f"  Loaded production model: {prod_path.name}")
+
     results = {}
     for mode in ABLATION_ORDER:
         results[mode] = train_ablation_model(
             mode, dataset_path, features_dir,
             train_idx, val_idx, test_idx, device,
+            production_model=prod_model,
         )
 
     # ── Comparison table ────────────────────────────────────────────────
@@ -348,9 +413,9 @@ def run_ablation_study(device):
 
     # Channel-level and modality-level marginal gains
     acetyl_marginal = (full_m.get("auroc", 0)
-                       - results["no_secondary"]["test_metrics"].get("auroc", 0))
+                       - results["no_acetyl"]["test_metrics"].get("auroc", 0))
     phospho_marginal = (full_m.get("auroc", 0)
-                        - results["secondary_only"]["test_metrics"].get("auroc", 0))
+                        - results["acetyl_only"]["test_metrics"].get("auroc", 0))
     drug_marginal = (full_m.get("auroc", 0)
                      - results["no_drug"]["test_metrics"].get("auroc", 0))
     struct_marginal = (full_m.get("auroc", 0)
@@ -390,16 +455,22 @@ def run_ablation_study(device):
                        else "MIXED" if votes_help >= 1 else "NO_HELP"),
     }
 
-    save = {mode: {
-        "label": results[mode]["label"],
-        "description": results[mode]["description"],
-        "use_typed_attention": results[mode]["use_typed_attention"],
-        "data_mode": results[mode]["data_mode"],
-        "val_metrics": results[mode]["val_metrics"],
-        "test_metrics": results[mode]["test_metrics"],
-        "training_epochs": results[mode]["training_epochs"],
-        "training_time_seconds": results[mode]["training_time_seconds"],
-    } for mode in ABLATION_ORDER}
+    save = {}
+    for mode in ABLATION_ORDER:
+        entry = {
+            "label": results[mode]["label"],
+            "description": results[mode]["description"],
+            "use_typed_attention": results[mode]["use_typed_attention"],
+            "data_mode": results[mode]["data_mode"],
+            "val_metrics": results[mode]["val_metrics"],
+            "test_metrics": results[mode]["test_metrics"],
+            "training_epochs": results[mode]["training_epochs"],
+            "training_time_seconds": results[mode]["training_time_seconds"],
+            "method": results[mode].get("method", "retrained"),
+        }
+        if "multi_seed" in results[mode]:
+            entry["multi_seed"] = results[mode]["multi_seed"]
+        save[mode] = entry
     save["_summary"] = summary
 
     out_path = RESULTS_DIR / "ablation_study.json"
@@ -442,11 +513,10 @@ def run_ablation_study(device):
 
 def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
     """
-    Integrated Gradients on the PTM-BDL phospho + acetyl input plane.
+    Integrated Gradients on the PTM-BDL flat input plane (phospho + acetyl).
 
-    HeLa has both phospho and acetyl (secondary) channels, so integrates along:
-      - ptm_vector / delta_ptm_vector (phospho)
-      - secondary_vector / delta_secondary_vector (acetyl)
+    Uses the flat ptm_vector (all PTM types concatenated) and delta_ptm_vector.
+    Slices into phospho (0:ptm_dim) and acetyl (ptm_dim:ptm_dim+sec_dim).
 
     Per-site importance = |grad_level × Δlevel| + |grad_delta × Δdelta|
 
@@ -456,10 +526,9 @@ def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
     dev = next(model.parameters()).device
     ptm_dim = dataset._ptm_dim
     sec_dim = dataset._secondary_dim
-    baseline_phospho = torch.ones(ptm_dim, device=dev)
-    baseline_dphospho = torch.zeros(ptm_dim, device=dev)
-    baseline_acetyl = torch.ones(sec_dim, device=dev) if sec_dim > 0 else torch.zeros(0, device=dev)
-    baseline_dacetyl = torch.zeros(sec_dim, device=dev) if sec_dim > 0 else torch.zeros(0, device=dev)
+    n_tokens = ptm_dim + sec_dim  # flat vector size
+    baseline_level = torch.ones(n_tokens, device=dev)
+    baseline_delta = torch.zeros(n_tokens, device=dev)
 
     sums_ph = {}
     sums_ac = {}
@@ -468,10 +537,8 @@ def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
 
     for idx in indices:
         sample = dataset[int(idx)]
-        actual_phospho = sample["ptm_vector"].to(dev)
-        actual_dphospho = sample["delta_ptm_vector"].to(dev)
-        actual_acetyl = sample["secondary_vector"].to(dev)
-        actual_dacetyl = sample["delta_secondary_vector"].to(dev)
+        actual_level = sample["ptm_vector"].to(dev)        # (n_tokens,) flat
+        actual_delta = sample["delta_ptm_vector"].to(dev)  # (n_tokens,) flat
         tp = sample["target_protein"].view(1).long().to(dev)
         pid = int(tp.item())
         protein = protein_names.get(pid, f"protein_{pid}")
@@ -487,63 +554,43 @@ def _run_ptm_bdl_ig(model, dataset, indices, n_steps: int = 20):
         drg_e = sample["drug_emb"].unsqueeze(0).to(dev)
         drg_p = sample["drug_pooled"].unsqueeze(0).to(dev)
 
-        grads_phospho = torch.zeros(ptm_dim, device=dev)
-        grads_dphospho = torch.zeros(ptm_dim, device=dev)
-        grads_acetyl = torch.zeros(sec_dim, device=dev) if sec_dim > 0 else torch.zeros(0, device=dev)
-        grads_dacetyl = torch.zeros(sec_dim, device=dev) if sec_dim > 0 else torch.zeros(0, device=dev)
+        grads_level = torch.zeros(n_tokens, device=dev)
+        grads_delta = torch.zeros(n_tokens, device=dev)
 
         for step in range(n_steps + 1):
             a = step / n_steps
-            iph = (baseline_phospho + a * (actual_phospho - baseline_phospho)
-                   ).unsqueeze(0).requires_grad_(True)
-            idph = (baseline_dphospho + a * (actual_dphospho - baseline_dphospho)
-                    ).unsqueeze(0).requires_grad_(True)
-
-            if sec_dim > 0:
-                iac = (baseline_acetyl + a * (actual_acetyl - baseline_acetyl)
-                       ).unsqueeze(0).requires_grad_(True)
-                idac = (baseline_dacetyl + a * (actual_dacetyl - baseline_dacetyl)
-                        ).unsqueeze(0).requires_grad_(True)
-            else:
-                iac = actual_acetyl.unsqueeze(0)
-                idac = actual_dacetyl.unsqueeze(0)
+            interp_level = (baseline_level + a * (actual_level - baseline_level)
+                           ).unsqueeze(0).requires_grad_(True)
+            interp_delta = (baseline_delta + a * (actual_delta - baseline_delta)
+                           ).unsqueeze(0).requires_grad_(True)
 
             _, resist_pred = model(
                 seq_embeddings=seq_e,
                 struct_embeddings=str_e,
                 drug_pooled=drg_p,
                 drug_embeddings=drg_e,
-                ptm_vector=iph,
-                delta_ptm_vector=idph,
-                secondary_vector=iac,
-                delta_secondary_vector=idac,
+                ptm_vector=interp_level,
+                delta_ptm_vector=interp_delta,
                 target_protein=tp,
             )
             model.zero_grad()
             resist_pred.backward()
-            if iph.grad is not None:
-                grads_phospho += iph.grad.squeeze(0).detach()
-            if idph.grad is not None:
-                grads_dphospho += idph.grad.squeeze(0).detach()
-            if sec_dim > 0:
-                if iac.grad is not None:
-                    grads_acetyl += iac.grad.squeeze(0).detach()
-                if idac.grad is not None:
-                    grads_dacetyl += idac.grad.squeeze(0).detach()
+            if interp_level.grad is not None:
+                grads_level += interp_level.grad.squeeze(0).detach()
+            if interp_delta.grad is not None:
+                grads_delta += interp_delta.grad.squeeze(0).detach()
 
+        # IG: |grad_level × Δlevel| + |grad_delta × Δdelta|
         n_s = n_steps + 1
-        delta_ph = actual_phospho - baseline_phospho
-        delta_dph = actual_dphospho - baseline_dphospho
-        attr_ph = (np.abs(((grads_phospho / n_s) * delta_ph).cpu().numpy())
-                   + np.abs(((grads_dphospho / n_s) * delta_dph).cpu().numpy()))
-        sums_ph[protein] += attr_ph
+        d_level = actual_level - baseline_level
+        d_delta = actual_delta - baseline_delta
+        attr = (np.abs(((grads_level / n_s) * d_level).cpu().numpy())
+                + np.abs(((grads_delta / n_s) * d_delta).cpu().numpy()))
 
+        # Slice into phospho (0:ptm_dim) and acetyl (ptm_dim:ptm_dim+sec_dim)
+        sums_ph[protein] += attr[:ptm_dim]
         if sec_dim > 0:
-            delta_ac = actual_acetyl - baseline_acetyl
-            delta_dac = actual_dacetyl - baseline_dacetyl
-            attr_ac = (np.abs(((grads_acetyl / n_s) * delta_ac).cpu().numpy())
-                       + np.abs(((grads_dacetyl / n_s) * delta_dac).cpu().numpy()))
-            sums_ac[protein] += attr_ac
+            sums_ac[protein] += attr[ptm_dim:ptm_dim + sec_dim]
 
     model.eval()
     out = {}
@@ -746,9 +793,7 @@ def run_randomized_ptm_control(device):
     print(f"  Phospho columns: {len(phospho_cols)}, Acetyl columns: {len(acetyl_cols)}")
 
     # Load trained full model
-    full_model_path = MODEL_DIR / "ablation_full.pt"
-    if not full_model_path.exists():
-        full_model_path = MODEL_DIR / "best_model.pt"
+    full_model_path = MODEL_DIR / "best_model.pt"
     if not full_model_path.exists():
         print("  ✗ No trained model found — run Part 1 first.")
         return {}

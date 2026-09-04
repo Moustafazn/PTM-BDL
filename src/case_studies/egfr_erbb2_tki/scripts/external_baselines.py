@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║  STEP 14b — External Baseline Framework (Tier 1–2 DRP Methods)              ║
+║  STEP 14b — External Baseline Tool (Tier 1–2 DRP Methods)              ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║                                                                              ║
 ║  PURPOSE:                                                                    ║
-║    Provide a structured framework for running external drug response         ║
+║    Provide a structured Tool for running external drug response         ║
 ║    prediction (DRP) methods on our EXACT dataset and split, collecting       ║
 ║    their predictions, and computing identical Tier A metrics.                ║
 ║                                                                              ║
@@ -374,7 +374,7 @@ def run_external_method(method_name, method_spec, df, split):
     """
     Attempt to run an external method on our data.
 
-    This is a framework function — each method requires custom integration.
+    This is a tool function — each method requires custom integration.
     For methods that cannot be run directly, we document the attempt and
     fall back to reported metrics (Benchmarking Plan §9 Risk 1).
     """
@@ -409,12 +409,12 @@ def run_external_method(method_name, method_spec, df, split):
     export_gdsc_subset_for_method(df, split, method_name, data_dir)
 
     # Step 3: Method-specific integration
-    # Each method has different input requirements. The framework provides
+    # Each method has different input requirements. The tool provides
     # data export and metric computation; actual method running requires
     # manual integration per method.
     #
     # For the initial submission, we:
-    # (a) Document the framework and data preparation
+    # (a) Document the tool and data preparation
     # (b) Run methods that can be integrated automatically
     # (c) Report published numbers for methods requiring manual setup
     #

@@ -5,7 +5,7 @@
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║                                                                              ║
 ║  PURPOSE:                                                                    ║
-║    Build a multi-cell-line multimodal dataset following the EGFR framework   ║
+║    Build a multi-cell-line multimodal dataset following the EGFR tool   ║
 ║    architecture: per-site PTM vectors on specific target proteins.           ║
 ║                                                                              ║
 ║  TARGET PROTEINS:                                                            ║

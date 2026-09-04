@@ -10,8 +10,7 @@
 ║  Per-sample input contract (proposal §6 — quick sanity snapshot):            ║
 ║    ptm_vector          : float32 (12,)  → ptm_Y869..ptm_Y1197                ║
 ║    delta_ptm_vector    : float32 (12,)  → delta_ptm_Y869..delta_ptm_Y1197    ║
-║    secondary_vector    : float32 (12,)  → glyco_slot00..glyco_slot11         ║
-║    delta_secondary_vec : float32 (12,)  → delta_glyco_slot00..delta_glyco_…  ║
+║    ptm_vector          : float32 (24,)  → ALL PTM sites (phospho + glyco, flat)  ║
 ║    target_protein      : long    ()     → 0=EGFR, 1=ERBB2                    ║
 ║                                                                              ║
 ║  Per-token feature built by PTMBDLEncoder:                                   ║
@@ -145,8 +144,6 @@ def verify_shapes(model: MultimodalResistancePredictor):
     print(f"    drug_pooled       : {list(drug_pooled.shape)}")
     print(f"    ptm_vector        : {list(ptm_vec.shape)}")
     print(f"    delta_ptm_vector  : {list(delta_ptm_vec.shape)}")
-    print(f"    secondary_vector  : {list(glyco_vec.shape)}")
-    print(f"    delta_secondary_vector: {list(delta_glyco_vec.shape)}")
     print(f"    target_protein    : {list(target_protein.shape)} {target_protein.tolist()}")
 
     # ── Forward, no attention ────────────────────────────────────────────
@@ -159,8 +156,6 @@ def verify_shapes(model: MultimodalResistancePredictor):
             drug_embeddings=drug_emb,
             ptm_vector=ptm_vec,
             delta_ptm_vector=delta_ptm_vec,
-            secondary_vector=glyco_vec,
-            delta_secondary_vector=delta_glyco_vec,
             target_protein=target_protein,
         )
 
@@ -188,8 +183,6 @@ def verify_shapes(model: MultimodalResistancePredictor):
             drug_embeddings=drug_emb,
             ptm_vector=ptm_vec,
             delta_ptm_vector=delta_ptm_vec,
-            secondary_vector=glyco_vec,
-            delta_secondary_vector=delta_glyco_vec,
             target_protein=target_protein,
             return_attention=True,
             return_ptm_bdl=True,
