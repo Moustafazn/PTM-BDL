@@ -1,10 +1,32 @@
-# PTM-BDL Tool
+# PTM-BDL: multimodal drug-response prediction from site-resolved post-translational modification states
 
-**PTM-BDL: multimodal drug response prediction with per-site post-translational modification interpretability**
+## Abstract
 
-A config-driven, extensible deep learning tool that treats post-translational modifications (PTMs) as first-class
-typed tokens in a self-attention architecture. The tool is protein-agnostic, PTM-type-agnostic, and drug-agnostic —
-adding a new protein, PTM type, or drug requires only configuration changes.
+Post-translational modifications (PTMs) regulate protein activity at specific
+residues and provide a dynamic molecular layer through which cancer cells can
+alter their response to therapy. Existing drug-response models typically
+represent cells with genomic, transcriptomic, or pathway-level features rather
+than site-resolved PTM states. We present
+PTM–BDL, a multimodal model that represents baseline PTM levels and
+drug-associated PTM changes as typed site tokens and integrates them with fixed
+protein-sequence, structure-derived, and drug-chemical features. The model
+jointly predicts the natural logarithm of the half-maximal inhibitory
+concentration (lnIC50) and a resistance label, and produces site- and
+PTM-channel-level attribution scores. We evaluated the framework in three
+preclinical systems: BCR–ABL/CML phosphorylation, HDAC/HeLa phosphorylation
+and acetylation, and EGFR/ERBB2 phosphorylation and glycosylation. In the
+recorded stratified internal context splits, classification AUROC was 0.785,
+0.946, and 0.875, respectively; corresponding lnIC50 Pearson correlations
+were 0.619, 0.949, and 0.597. The PTM inputs are evidence-informed,
+harmonised states, using exact source matches where available and source-profile
+propagation otherwise. Controlled input-removal analyses assess the
+contribution of each modality to the fitted predictor, and five-fold retraining
+of Full and No-PTM models corroborates the same case-dependent pattern. The
+typed gate, cross-type attention, and joint-removal analyses expose
+non-additive cross-modification model reliance. The results are reported as
+preclinical evaluations on retrospective molecular response data. PTM–BDL
+therefore provides a site-resolved framework for prioritising drug–context,
+pharmacodynamic, and cross-PTM hypotheses for cancer-response research.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -24,6 +46,9 @@ adding a new protein, PTM type, or drug requires only configuration changes.
 ---
 
 ## Overview
+
+PTM-BDL provides a configurable pipeline for training, evaluating, and interpreting drug-response models across
+different proteins, PTM types, and drugs.
 
 Drug resistance is determined by the **combinatorial PTM signaling code** — the pattern of which sites are
 phosphorylated, glycosylated, or otherwise modified, how drugs change those patterns, and how different modification
@@ -586,7 +611,7 @@ python -m pytest tests/ -v --tb=short
 
 ```bibtex
 @software{zein2026ptmbdl,
-  title  = {PTM-BDL: multimodal drug response prediction with per-site post-translational modification interpretability},
+  title  = {PTM-BDL: multimodal drug-response prediction from site-resolved post-translational modification states},
   author = {Zein, Moustafa and Hassanien, Aboul Ella},
   year   = {2026},
   url    = {https://github.com/Moustafazn/PTM-BDL},
