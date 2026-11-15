@@ -1,83 +1,56 @@
-# PTM-BDL: multimodal drug-response prediction from site-resolved post-translational modification states
+# PTM-BDL: A site-resolved post-translational modification framework for drug-response analysis
 
-## Abstract
-
-Post-translational modifications (PTMs) regulate protein activity at specific
-residues and provide a dynamic molecular layer through which cancer cells can
-alter their response to therapy. Existing drug-response models typically
-represent cells with genomic, transcriptomic, or pathway-level features rather
-than site-resolved PTM states. We present
-PTM–BDL, a multimodal model that represents baseline PTM levels and
-drug-associated PTM changes as typed site tokens and integrates them with fixed
-protein-sequence, structure-derived, and drug-chemical features. The model
-jointly predicts the natural logarithm of the half-maximal inhibitory
-concentration (lnIC50) and a resistance label, and produces site- and
-PTM-channel-level attribution scores. We evaluated the framework in three
-preclinical systems: BCR–ABL/CML phosphorylation, HDAC/HeLa phosphorylation
-and acetylation, and EGFR/ERBB2 phosphorylation and glycosylation. In the
-recorded stratified internal context splits, classification AUROC was 0.785,
-0.946, and 0.875, respectively; corresponding lnIC50 Pearson correlations
-were 0.619, 0.949, and 0.597. The PTM inputs are evidence-informed,
-harmonised states, using exact source matches where available and source-profile
-propagation otherwise. Controlled input-removal analyses assess the
-contribution of each modality to the fitted predictor, and five-fold retraining
-of Full and No-PTM models corroborates the same case-dependent pattern. The
-typed gate, cross-type attention, and joint-removal analyses expose
-non-additive cross-modification model reliance. The results are reported as
-preclinical evaluations on retrospective molecular response data. PTM–BDL
-therefore provides a site-resolved framework for prioritising drug–context,
-pharmacodynamic, and cross-PTM hypotheses for cancer-response research.
+PTM-BDL is a research framework for evaluating the contribution of post-translational modification profiles to drug response and interpreting predictions at individual modification sites. This repository accompanies the manuscript **A site-resolved post-translational modification framework for drug-response analysis**.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![PyTorch 2.1+](https://img.shields.io/badge/PyTorch-2.1+-ee4c2c.svg)](https://pytorch.org/)
 
----
+## Scientific contribution
+
+PTM states describe regulatory information that fixed protein and compound features do not specify, motivating a framework that evaluates their contribution to response prediction while preserving protein, modification type, site identity, baseline state and treatment-associated change for interpretation.
+
+Retraining models with and without PTM inputs assesses their additional predictive contribution, while integrated gradients and input-replacement analyses describe the reliance of a fitted model on particular inputs. Repeated-seed analysis then assesses the stability of site rankings, connecting evaluation of the PTM panel with selection of candidate pharmacodynamic measurements for independent experimental validation.
+
+### Main findings
+
+| Case study | Internal AUROC | Mean AUROC gain after retraining with PTM inputs | Folds with positive gain |
+| --- | ---: | ---: | ---: |
+| K562/CML | 0.785 | 0.0268 | 5 of 5 |
+| HeLa/HDAC | 0.946 | 0.0011 | 3 of 5 |
+| EGFR/ERBB2 | 0.875 | 0.0057 | 3 of 5 |
+
+The internal AUROCs describe the recorded context splits, while the gains come from separate five-fold comparisons of Full and No-PTM models, with both sets of values taken directly from the saved evaluation and retraining JSON files in `results/`. The biologically distinct case studies showed a consistent incremental contribution in K562/CML and more modest incremental gains in HeLa/HDAC and EGFR/ERBB2.
+
+Within K562/CML, CRKL Y207 and STAT5A Y694 retained the leading attribution ranks for their proteins across three seeds, while greater PTM attribution in dasatinib than in cytotoxic drug contexts identified a focused setting for pharmacodynamic investigation. These findings motivate matched measurements under defined drug concentrations and exposure times, with the less stable rankings in the other systems indicating that site prioritisation depends on the evaluated context.
+
+Classical models remained competitive or better in the predictive comparisons, and the internal splits include repeated or related endpoint contexts. The separate leave-one-drug-out evaluations showed limited performance on drugs excluded during training, which addresses a different question from applying the framework across the three biological settings. Because PTM inputs combine exact source matches where available with propagated profiles, attributions and cross-type attention describe fitted-model behaviour, supporting retrospective hypothesis generation and prioritisation of experiments to examine candidate PTM effects.
 
 ## Architecture
 
 <p align="center">
-  <img src="docs/figures/architecture.png" alt="PTM-BDL Tool Architecture" width="100%">
-</p>
-<p align="center">
-  <em><strong>Figure 1.</strong> PTM-BDL multimodal architecture. <strong>Stage 1 (Static)</strong>: Protein sequence (ESM-2), 3D structure (GearNet), and drug chemistry (ChemBERTa) are projected into a shared space and processed by cross-modal self-attention to produce S<sub>rep</sub>. <strong>Stage 2 (Dynamic)</strong>: PTM sites are encoded as typed tokens [level, δ, ratio] with type-gated projection and inter-site self-attention to produce P<sub>rep</sub>. <strong>Fusion</strong>: Bilinear late fusion S<sub>rep</sub> ⊙ P<sub>rep</sub> feeds prediction heads for IC50 regression and resistance classification.</em>
+  <img src="docs/figures/ptm_bdl_site_framework.png" alt="PTM-BDL architecture showing molecular inputs, typed PTM site representation, response prediction and site attribution" width="100%">
 </p>
 
----
+**Figure 1.** PTM-BDL combines fixed sequence, structure-derived and chemical features with a separate PTM representation. Sequence and chemical features are obtained from pretrained ESM-2 and ChemBERTa encoders. The reported structural features come from a graph encoder without pretrained weights. Each PTM token retains its protein, site and modification type together with baseline, treatment-associated change and relative-change values. Type-conditioned projection, masked self-attention and gated pooling form the PTM representation. Bilinear late fusion combines the molecular and PTM representations for lnIC50 and resistance prediction. Integrated gradients quantify contributions of the configured site inputs to fitted resistance predictions.
 
-## Overview
+### Case studies
 
-PTM-BDL provides a configurable pipeline for training, evaluating, and interpreting drug-response models across
-different proteins, PTM types, and drugs.
+| Case study | Proteins | PTM channels | Drugs | Model contexts | Cell–drug endpoints |
+| --- | --- | --- | --- | ---: | ---: |
+| K562/CML | ABL1, CRKL, STAT5A | Phosphorylation | Two kinase inhibitors and three cytotoxic drugs | 10,656 | 3,552 |
+| HeLa/HDAC | HDAC1, EP300 | Phosphorylation and acetylation | Six epigenetic modulators | 3,374 | 1,687 |
+| EGFR/ERBB2 | EGFR, ERBB2 | Phosphorylation and glycosylation | Six ERBB-family inhibitors | 951 | 951 |
 
-Drug resistance is determined by the **combinatorial PTM signaling code** — the pattern of which sites are
-phosphorylated, glycosylated, or otherwise modified, how drugs change those patterns, and how different modification
-types interact. PTM-BDL is the first neural module that encodes this biology through typed self-attention over PTM
-tokens, enabling the model to discover inter-site signaling dependencies and cross-type crosstalk.
+Contexts are cell-line–drug–target-protein rows. HeLa/HDAC and K562/CML expand cell–drug endpoints over two and three proteins, respectively. These are the processed modelling cohorts reported in the manuscript. The three case studies characterise the framework in different biological settings, with generalisation assessed separately using held-out cells and drugs.
 
-### Two Architectural Contributions
+## Manuscript and results
 
-1. **Multimodal Cross-Modal Self-Attention** — Protein sequence (ESM-2), 3D structure (GearNet), and drug chemistry (
-   ChemBERTa) are jointly learned through cross-modal self-attention, producing a static protein-drug representation (
-   S_rep).
+The current submission materials are maintained in the local `paper/` directory. The previous `manuscript/` directory is preserved as an archive. Both directories are excluded from version control. The current manuscript is a draft and has not been published as a journal article.
 
-2. **PTM Biological Dynamics Layer (PTM-BDL)** — A typed self-attention encoder that accepts any number of PTM types,
-   each with any number of subtypes. Each PTM site becomes a typed token encoded as `[level, delta, ratio]`, processed
-   through type-gated projection and inter-site self-attention to produce a dynamic PTM representation (P_rep).
+The saved JSON outputs in `results/<case_study>/` are the numerical sources for the manuscript tables, quantitative figures and reported results. Editorial revisions do not alter these outputs. The local plotting helper `paper/scripts/render_result_figures.py` reads the original JSON files to generate the manuscript attribution and supplementary calibration figures. Existing case-study plotting commands below remain available for the wider analysis outputs.
 
-**Fusion**: `S_rep ⊙ P_rep` — "Given the drug CAN bind (S_rep), does the PTM signaling code say it WORKS? (P_rep)"
-
-### Case Studies
-
-| Case Study | Status | Proteins | PTM Types | Drugs | Cancer | Data |
-|------------|--------|----------|-----------|-------|--------|------|
-| **EGFR/ERBB2 TKI Resistance** | ✅ Complete | EGFR, HER2 | phospho (Y/S/T) + glyco (N) | 6 TKIs | NSCLC + Breast | 3.8M rows |
-| **HeLa / HDAC Inhibitors** |  ✅ Complete | HDAC1, EP300 | phospho (S/T/Y) + **acetyl (K)** | 6 drugs | Cervical (pan-cancer) | 93K summaries |
-| **K562 / CML (BCR-ABL)** | ✅ Complete | ABL1, CRKL, STAT5A | phospho (S/T/Y) | 5 drugs (TKI + chemo) | CML (leukemia) | 78K summaries |
-
-Each case study demonstrates that the tool generalises to a different drug mechanism, cancer type, and PTM type.
-
----
+Processed datasets, saved splits and model checkpoints are stored outside the tracked source tree. Acquisition and harmonisation instructions are provided in the [data download guide](docs/DATA_DOWNLOAD_GUIDE.md).
 
 ## Project Structure
 
@@ -175,12 +148,6 @@ pip install -e ".[dev]"
 Raw data files must be downloaded manually before running the pipeline.
 See [`docs/DATA_DOWNLOAD_GUIDE.md`](docs/DATA_DOWNLOAD_GUIDE.md) for complete instructions.
 
-**Quick option** — download the pre-packaged archive:
-```bash
-# Download from GitHub Releases and extract:
-tar -xzf data_raw.tar.gz
-```
-
 **Required data sources:**
 
 | Source | Files | Size | Place In |
@@ -224,12 +191,7 @@ hf download DeepChem/ChemBERTa-77M-MTR
 ```
 
 
-> **Step 08 structural embeddings** tries three backends in order:
-> 1. **ESM-IF1** (best — pretrained GVP encoder): requires `fair-esm` + `biotite`
-> 2. **PyG GNN** (good — trainable Xavier-init GNN): requires `torch-geometric`
-> 3. **Basic fallback** (functional — Xavier-initialized GNN): only needs `torch` + `biopython`
->
-> For best results, all three packages should be installed (step 3 above).
+> The structural extraction scripts support ESM-IF1 and graph-feature fallbacks, depending on the available packages. The results reported in the manuscript use fixed features from graph encoders without pretrained weights. Running a different backend produces different input features and does not reproduce the recorded evaluation unchanged.
 
 ### Docker (recommended for reproducibility)
 
@@ -313,13 +275,11 @@ python -m src.case_studies.<cs>.scripts.paper_tables       # Publication tables
 
 ## Using PTM-BDL as a Package
 
-After publication, PTM-BDL can be installed and used in any Python project:
+PTM-BDL can be installed directly from this source repository.
 
 ### Installation
 
 ```bash
-pip install ptm-bdl
-# or from source:
 pip install git+https://github.com/Moustafazn/PTM-BDL.git
 ```
 
@@ -330,11 +290,11 @@ pip install git+https://github.com/Moustafazn/PTM-BDL.git
 | Input                | Shape              | Type    | Description                                       |
 |----------------------|--------------------|---------|---------------------------------------------------|
 | `seq_embeddings`     | (B, L, 1280)       | float32 | ESM-2 per-residue protein embeddings              |
-| `struct_embeddings`  | (B, M, 512)        | float32 | GearNet per-residue structural embeddings         |
+| `struct_embeddings`  | (B, M, 512)        | float32 | Fixed structure-derived graph features         |
 | `drug_pooled`        | (B, 384)           | float32 | ChemBERTa pooled drug embedding                   |
 | `drug_embeddings`    | (B, N, 384)        | float32 | ChemBERTa per-token drug embeddings (optional)    |
-| `ptm_vector`              | (B, n_tokens)          | float32 | Flat PTM baseline occupancy (all types concatenated, 1.0 = wild-type) |
-| `delta_ptm_vector`        | (B, n_tokens)          | float32 | Flat drug-induced PTM change (all types concatenated, 0.0 = no drug)  |
+| `ptm_vector`              | (B, n_tokens)          | float32 | Baseline PTM state (all types concatenated, 1.0 is the model reference state) |
+| `delta_ptm_vector`        | (B, n_tokens)          | float32 | Treatment-associated PTM change (all types concatenated, 0.0 is the no-change reference)  |
 | `target_protein`          | (B,)                   | long    | Protein ID index (0, 1, 2, ...)                           |
 
 **Outputs**:
@@ -366,7 +326,7 @@ print(f"Model: {sum(p.numel() for p in model.parameters()):,} parameters")
 n_tokens = 24  # from registry.n_tokens
 sample = {
     "seq_emb": torch.randn(1, 100, 1280),       # ESM-2 protein embeddings
-    "struct_emb": torch.randn(1, 80, 512),       # GearNet structural embeddings
+    "struct_emb": torch.randn(1, 80, 512),       # Fixed structure-derived features
     "drug_pooled": torch.randn(1, 384),           # ChemBERTa pooled
     "drug_emb": torch.randn(1, 20, 384),          # ChemBERTa per-token
     "ptm_vector": torch.ones(1, n_tokens),        # Flat PTM baseline (all types)
@@ -609,9 +569,11 @@ python -m pytest tests/ -v --tb=short
 
 ## Citation
 
+The manuscript is unpublished. Use the repository citation below until a publication record is available.
+
 ```bibtex
 @software{zein2026ptmbdl,
-  title  = {PTM-BDL: multimodal drug-response prediction from site-resolved post-translational modification states},
+  title  = {A site-resolved post-translational modification framework for drug-response analysis},
   author = {Zein, Moustafa and Hassanien, Aboul Ella},
   year   = {2026},
   url    = {https://github.com/Moustafazn/PTM-BDL},
