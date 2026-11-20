@@ -1,0 +1,96 @@
+{
+  "method": "Leave-One-Drug-Out (LODO)",
+  "description": "Cold-drug evaluation: train on N-1 drugs, select checkpoints and thresholds on an inner validation split, then test on the held-out drug",
+  "per_drug_results": {
+    "A485": {
+      "n_samples": 6,
+      "rmse": 4.30898750006969,
+      "n_resistant": 0,
+      "n_sensitive": 6,
+      "pearson_r": 0.0038982800428790194,
+      "spearman_rho": 0.35856858280031817,
+      "auroc": null,
+      "auprc_sensitive": null,
+      "balanced_acc": null,
+      "drug": "A485",
+      "n_train": 2862,
+      "n_validation": 506,
+      "validation_threshold": 0.59626704454422
+    },
+    "A486": {
+      "n_samples": 6,
+      "rmse": 0.5294530996925199,
+      "n_resistant": 6,
+      "n_sensitive": 0,
+      "pearson_r": NaN,
+      "spearman_rho": NaN,
+      "auroc": null,
+      "auprc_sensitive": null,
+      "balanced_acc": null,
+      "drug": "A486",
+      "n_train": 2862,
+      "n_validation": 506,
+      "validation_threshold": 0.6491313576698303
+    },
+    "CUDC-101": {
+      "n_samples": 6,
+      "rmse": 1.142684748964629,
+      "n_resistant": 4,
+      "n_sensitive": 2,
+      "pearson_r": -0.000998194580060388,
+      "spearman_rho": 0.0,
+      "auroc": 0.375,
+      "auprc_sensitive": 0.3666666666666667,
+      "balanced_acc": 0.375,
+      "drug": "CUDC-101",
+      "n_train": 2862,
+      "n_validation": 506,
+      "validation_threshold": 0.6378846764564514
+    },
+    "Curcumin": {
+      "n_samples": 4,
+      "skipped": true,
+      "reason": "< 5 test samples"
+    },
+    "Romidepsin": {
+      "n_samples": 1434,
+      "rmse": 5.71942501566072,
+      "n_resistant": 0,
+      "n_sensitive": 1434,
+      "pearson_r": -6.9552236310546e-07,
+      "spearman_rho": 0.01578873955808318,
+      "auroc": null,
+      "auprc_sensitive": null,
+      "balanced_acc": null,
+      "drug": "Romidepsin",
+      "n_train": 1649,
+      "n_validation": 291,
+      "validation_threshold": 0.4019818902015686
+    },
+    "Vorinostat": {
+      "n_samples": 1918,
+      "rmse": 1.4459392941185327,
+      "n_resistant": 1784,
+      "n_sensitive": 134,
+      "pearson_r": -1.0750251132115642e-05,
+      "spearman_rho": -0.0006274368960368402,
+      "auroc": 0.4800653403386653,
+      "auprc_sensitive": 0.0701377385681026,
+      "balanced_acc": 0.5,
+      "drug": "Vorinostat",
+      "n_train": 1237,
+      "n_validation": 219,
+      "validation_threshold": 0.9523159265518188
+    }
+  },
+  "summary": {
+    "n_drugs_total": 6,
+    "n_drugs_evaluated": 5,
+    "mean_pearson_r": NaN,
+    "std_pearson_r": NaN,
+    "mean_rmse": 2.6292979317012186,
+    "std_rmse": 2.019403237585169,
+    "mean_auroc": 0.42753267016933266,
+    "std_auroc": 0.05253267016933266
+  }
+}

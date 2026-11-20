@@ -1,0 +1,23 @@
+{
+  "case_study": "k562_cml",
+  "results": {
+    "auroc_ci": {
+      "estimate": 0.7960763133445732,
+      "ci_lower": 0.7715521620541327,
+      "ci_upper": 0.819260559965567,
+      "std": 0.011772821220315404
+    },
+    "balanced_acc_ci": {
+      "estimate": 0.5,
+      "ci_lower": 0.5,
+      "ci_upper": 0.5,
+      "std": 0.0
+    },
+    "pearson_r_ci": {
+      "estimate": 0.625868940214549,
+      "ci_lower": 0.5964002426408758,
+      "ci_upper": 0.6555076093152602,
+      "std": 0.015168069205886002
+    }
+  }
+}

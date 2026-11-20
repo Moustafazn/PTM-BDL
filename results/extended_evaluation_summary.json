@@ -1,0 +1,178 @@
+{
+  "egfr_erbb2_tki": {
+    "case_study": "egfr_erbb2_tki",
+    "timestamp": "2026-08-26 16:36:36",
+    "brier_score": {
+      "brier_score": 0.25312092722279,
+      "n_samples": 143,
+      "quality": "poor"
+    },
+    "ptm_grouped_splits": {
+      "n_unique_train": 125,
+      "n_unique_test": 58,
+      "n_overlapping_vectors": 48,
+      "test_samples_with_overlap": 133,
+      "test_samples_unique": 10,
+      "overlap_fraction": 0.9301
+    },
+    "ig_pad_audit": {
+      "total_ranked": 41,
+      "pad_in_top10": 0,
+      "issues": []
+    },
+    "data_accounting": {
+      "total_samples": 951,
+      "unique_cell_lines": 214,
+      "unique_drugs": 6,
+      "drug_names": [
+        "Afatinib",
+        "Erlotinib",
+        "Gefitinib",
+        "Lapatinib",
+        "Osimertinib",
+        "Sapitinib"
+      ],
+      "unique_proteins": 2,
+      "protein_names": [
+        "EGFR",
+        "ERBB2"
+      ],
+      "unique_pairs": 951,
+      "pair_definition": "cell_line \u00d7 drug_name \u00d7 target_protein",
+      "n_sensitive": 78,
+      "n_resistant": 873,
+      "class_ratio": "873:78",
+      "per_protein": {
+        "EGFR": {
+          "samples": 646,
+          "cells": 163,
+          "drugs": 4
+        },
+        "ERBB2": {
+          "samples": 305,
+          "cells": 51,
+          "drugs": 6
+        }
+      }
+    }
+  },
+  "hela_hdac": {
+    "case_study": "hela_hdac",
+    "timestamp": "2026-08-26 16:36:37",
+    "brier_score": {
+      "brier_score": 0.09257316064400646,
+      "n_samples": 507,
+      "quality": "good"
+    },
+    "ptm_grouped_splits": {
+      "n_unique_train": 33,
+      "n_unique_test": 17,
+      "n_overlapping_vectors": 12,
+      "test_samples_with_overlap": 502,
+      "test_samples_unique": 5,
+      "overlap_fraction": 0.9901
+    },
+    "ig_pad_audit": {
+      "total_ranked": 0,
+      "pad_in_top10": 0,
+      "issues": []
+    },
+    "data_accounting": {
+      "total_samples": 3374,
+      "unique_cell_lines": 966,
+      "unique_drugs": 6,
+      "drug_names": [
+        "A485",
+        "A486",
+        "CUDC-101",
+        "Curcumin",
+        "Romidepsin",
+        "Vorinostat"
+      ],
+      "unique_proteins": 2,
+      "protein_names": [
+        "EP300",
+        "HDAC1"
+      ],
+      "unique_pairs": 3374,
+      "pair_definition": "cell_line_name \u00d7 drug_name \u00d7 target_protein",
+      "n_sensitive": 1576,
+      "n_resistant": 1798,
+      "class_ratio": "1798:1576",
+      "per_protein": {
+        "EP300": {
+          "samples": 1687,
+          "cells": 966,
+          "drugs": 6
+        },
+        "HDAC1": {
+          "samples": 1687,
+          "cells": 966,
+          "drugs": 6
+        }
+      }
+    }
+  },
+  "k562_cml": {
+    "case_study": "k562_cml",
+    "timestamp": "2026-08-26 16:36:37",
+    "brier_score": {
+      "brier_score": 0.21185327348922453,
+      "n_samples": 1599,
+      "quality": "moderate"
+    },
+    "ptm_grouped_splits": {
+      "n_unique_train": 48,
+      "n_unique_test": 32,
+      "n_overlapping_vectors": 30,
+      "test_samples_with_overlap": 1597,
+      "test_samples_unique": 2,
+      "overlap_fraction": 0.9987
+    },
+    "ig_pad_audit": {
+      "total_ranked": 0,
+      "pad_in_top10": 0,
+      "issues": []
+    },
+    "data_accounting": {
+      "total_samples": 10656,
+      "unique_cell_lines": 967,
+      "unique_drugs": 5,
+      "drug_names": [
+        "Cytarabine",
+        "Dasatinib",
+        "Imatinib",
+        "Methotrexate",
+        "Paclitaxel"
+      ],
+      "unique_proteins": 3,
+      "protein_names": [
+        "ABL1",
+        "CRKL",
+        "STAT5A"
+      ],
+      "unique_pairs": 10656,
+      "pair_definition": "cell_line_name \u00d7 drug_name \u00d7 target_protein",
+      "n_sensitive": 5187,
+      "n_resistant": 5469,
+      "class_ratio": "5469:5187",
+      "per_protein": {
+        "ABL1": {
+          "samples": 3552,
+          "cells": 967,
+          "drugs": 5
+        },
+        "CRKL": {
+          "samples": 3552,
+          "cells": 967,
+          "drugs": 5
+        },
+        "STAT5A": {
+          "samples": 3552,
+          "cells": 967,
+          "drugs": 5
+        }
+      }
+    }
+  }
+}

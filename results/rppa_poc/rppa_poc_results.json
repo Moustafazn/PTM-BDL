@@ -1,0 +1,52 @@
+{
+  "A_concat": {
+    "description": "Fix B: concat(S,P)\u2192MLP (NO bypass)",
+    "mode": "full",
+    "n_params": 551938,
+    "best_val_auroc": 0.7135,
+    "test_auroc": 0.6416,
+    "test_bacc": 0.5918,
+    "test_pcc": 0.84579998254776,
+    "test_rmse": 1.4746,
+    "time_seconds": 1511.7
+  },
+  "B_aux_only": {
+    "description": "Fix A: gated + aux PTM loss",
+    "mode": "full",
+    "n_params": 618116,
+    "best_val_auroc": 0.7158,
+    "test_auroc": 0.672,
+    "test_bacc": 0.6268,
+    "test_pcc": 0.857699990272522,
+    "test_rmse": 1.4278,
+    "time_seconds": 1546.5
+  },
+  "C_concat_aux": {
+    "description": "Fix A+B: concat + aux PTM loss",
+    "mode": "full",
+    "n_params": 568580,
+    "best_val_auroc": 0.6988,
+    "test_auroc": 0.6443,
+    "test_bacc": 0.5933,
+    "test_pcc": 0.8510000109672546,
+    "test_rmse": 1.4581,
+    "time_seconds": 1523.4
+  },
+  "D_no_rppa": {
+    "description": "Drug-only baseline (no RPPA)",
+    "mode": "no_rppa",
+    "n_params": 551938,
+    "best_val_auroc": 0.5053,
+    "test_auroc": 0.4997,
+    "test_bacc": 0.4993,
+    "test_pcc": 0.8328999876976013,
+    "test_rmse": 1.53,
+    "time_seconds": 14346.4
+  },
+  "_summary": {
+    "best_fix": "B_aux_only",
+    "best_fix_auroc": 0.672,
+    "baseline_auroc": 0.4997,
+    "drug_filter": "all"
+  }
+}

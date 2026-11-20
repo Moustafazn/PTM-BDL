@@ -1,0 +1,5 @@
+{
+  "optimal_threshold": 0.44491901993751526,
+  "method": "Youden_J",
+  "reference": "Youden WJ (1950) Cancer 3:32-35"
+}

@@ -1,0 +1,340 @@
+{
+  "test_samples": 143,
+  "regression": {
+    "mse": 3.098241411846925,
+    "rmse": 1.760182209842755,
+    "r2": 0.19616399432115095,
+    "pearson_r": 0.6143841561780392,
+    "pearson_p": 3.3239178459277525e-16,
+    "spearman_rho": 0.4394908473063577,
+    "spearman_p": 3.9860010903598136e-08
+  },
+  "classification": {
+    "accuracy": 0.5524475524475524,
+    "balanced_accuracy": 0.7178753180661577,
+    "f1_score": 0.68,
+    "auroc": 0.9090330788804071,
+    "auprc": 0.9896651394071319,
+    "confusion_matrix": [
+      [
+        11,
+        1
+      ],
+      [
+        63,
+        68
+      ]
+    ],
+    "mean_predicted_probability": 0.46879481597171796,
+    "per_class": {
+      "sensitive": {
+        "precision": 0.14864864864864866,
+        "recall": 0.9166666666666666,
+        "f1-score": 0.2558139534883721,
+        "support": 12.0
+      },
+      "resistant": {
+        "precision": 0.9855072463768116,
+        "recall": 0.5190839694656488,
+        "f1-score": 0.68,
+        "support": 131.0
+      }
+    }
+  },
+  "baselines": {
+    "majority_class_accuracy": 0.916083916083916,
+    "majority_class_balanced_accuracy": 0.5,
+    "mean_prediction_mse": 3.854320271745508,
+    "mean_prediction_rmse": 1.963242285543358
+  },
+  "per_protein": {
+    "EGFR": {
+      "n_samples": 97,
+      "n_sensitive": 7,
+      "n_resistant": 90,
+      "mean_prob": 0.4799544331185597,
+      "balanced_accuracy": 0.6952380952380952,
+      "auroc": 0.9055555555555556,
+      "rmse": 1.5445813217905788,
+      "pearson_r": 0.6832009334658092
+    },
+    "ERBB2": {
+      "n_samples": 46,
+      "n_sensitive": 5,
+      "n_resistant": 41,
+      "mean_prob": 0.44526257981424744,
+      "balanced_accuracy": 0.7439024390243902,
+      "auroc": 0.8219512195121951,
+      "rmse": 2.144926128770205,
+      "pearson_r": 0.5465155373094714
+    }
+  },
+  "drug_specific": {
+    "Afatinib": {
+      "n_samples": 29,
+      "n_sensitive": 4,
+      "n_resistant": 25,
+      "mean_prob": 0.4000124142601572,
+      "balanced_accuracy": 0.5,
+      "auroc": 0.79,
+      "rmse": 1.6866408768035541,
+      "pearson_r": 0.7706354057429018
+    },
+    "Erlotinib": {
+      "n_samples": 37,
+      "n_sensitive": 2,
+      "n_resistant": 35,
+      "mean_prob": 0.525314571084203,
+      "balanced_accuracy": 0.9857142857142858,
+      "auroc": 1.0,
+      "rmse": 1.5843515475984093,
+      "pearson_r": 0.6259172137936849
+    },
+    "Gefitinib": {
+      "n_samples": 28,
+      "n_sensitive": 1,
+      "n_resistant": 27,
+      "mean_prob": 0.5563562767846244,
+      "balanced_accuracy": 0.5,
+      "auroc": 0.9444444444444444,
+      "rmse": 1.198394940731708,
+      "pearson_r": -0.025483266633346227
+    },
+    "Lapatinib": {
+      "n_samples": 9,
+      "n_sensitive": 1,
+      "n_resistant": 8,
+      "mean_prob": 0.3330164584848616,
+      "balanced_accuracy": 0.5,
+      "auroc": 0.3125,
+      "rmse": 3.459142336898773,
+      "pearson_r": -0.2781630420641314
+    },
+    "Osimertinib": {
+      "n_samples": 33,
+      "n_sensitive": 4,
+      "n_resistant": 29,
+      "mean_prob": 0.40509501867222064,
+      "balanced_accuracy": 0.5,
+      "auroc": 0.9224137931034483,
+      "rmse": 1.7411565906609507,
+      "pearson_r": 0.5926054104157666
+    },
+    "Sapitinib": {
+      "n_samples": 7,
+      "n_sensitive": 0,
+      "n_resistant": 7,
+      "mean_prob": 0.5796285782541547,
+      "balanced_accuracy": 1.0,
+      "auroc": 0.0,
+      "rmse": 1.678749705205598,
+      "pearson_r": 0.4832672409400212
+    }
+  },
+  "cross_protein_drugs": {
+    "note": "Drugs tested on both EGFR (NSCLC) and ERBB2 (breast) contexts. Afatinib is a pan-ERBB inhibitor targeting both receptors. Cross-receptor consistency validates the model's biological learning."
+  },
+  "mutation_stratified": {
+    "p.E746_A750del; p.E746_A750delELREA": {
+      "n_samples": 8,
+      "n_sensitive": 4,
+      "n_resistant": 4,
+      "mean_resist_prob": 0.11820530984550714,
+      "mean_ic50_true": -0.5293526314198971,
+      "mean_ic50_pred": -3.3766974210739136
+    },
+    "p.L858R; p.T790M": {
+      "n_samples": 4,
+      "n_sensitive": 2,
+      "n_resistant": 2,
+      "mean_resist_prob": 0.12051286175847054,
+      "mean_ic50_true": 0.005675256252288818,
+      "mean_ic50_pred": -3.3935877084732056
+    },
+    "p.E746_A750del; p.E746K; p.E746_A750delELREA": {
+      "n_samples": 4,
+      "n_sensitive": 4,
+      "n_resistant": 0,
+      "mean_resist_prob": 0.11152133718132973,
+      "mean_ic50_true": -3.24803626537323,
+      "mean_ic50_pred": -3.4938735365867615
+    },
+    "p.A750P; p.L747_E749delLRE": {
+      "n_samples": 4,
+      "n_sensitive": 4,
+      "n_resistant": 0,
+      "mean_resist_prob": 0.11149680614471436,
+      "mean_ic50_true": -2.1022655069828033,
+      "mean_ic50_pred": -3.49382483959198
+    },
+    "p.L858R": {
+      "n_samples": 4,
+      "n_sensitive": 3,
+      "n_resistant": 1,
+      "mean_resist_prob": 0.1200680360198021,
+      "mean_ic50_true": -1.4707995280623436,
+      "mean_ic50_pred": -3.390376567840576
+    },
+    "p.A755D; p.L747_P753delinsS": {
+      "n_samples": 4,
+      "n_sensitive": 0,
+      "n_resistant": 4,
+      "mean_resist_prob": 0.11150187999010086,
+      "mean_ic50_true": 0.6080897375941277,
+      "mean_ic50_pred": -3.494109272956848
+    },
+    "p.E746_A750del": {
+      "n_samples": 4,
+      "n_sensitive": 4,
+      "n_resistant": 0,
+      "mean_resist_prob": 0.15443638525903225,
+      "mean_ic50_true": -4.402749955654144,
+      "mean_ic50_pred": -2.7797646522521973
+    },
+    "p.A750P; p.L747_E749del": {
+      "n_samples": 4,
+      "n_sensitive": 4,
+      "n_resistant": 0,
+      "mean_resist_prob": 0.1570129431784153,
+      "mean_ic50_true": -4.25,
+      "mean_ic50_pred": -2.739490330219269
+    }
+  },
+  "erbb2_amp_stratified": {
+    "ERBB2_wild_type": {
+      "n_samples": 251,
+      "n_sensitive": 21,
+      "n_resistant": 230,
+      "mean_resist_prob": 0.348287893956401,
+      "mean_ic50_true": 2.5519971194198408,
+      "mean_ic50_pred": -0.1671149277117148
+    },
+    "HER2_amplified": {
+      "n_samples": 54,
+      "n_sensitive": 9,
+      "n_resistant": 45,
+      "mean_resist_prob": 0.3421675689794399,
+      "mean_ic50_true": 1.6923585970092703,
+      "mean_ic50_pred": -0.23062304269384454
+    }
+  },
+  "glyco_state_stratified": {
+    "tertiles": {
+      "q33": 1.0,
+      "q66": 1.0
+    },
+    "entries": {
+      "low__CMP_driver": {
+        "n_samples": 4,
+        "n_sensitive": 4,
+        "mean_resist_prob": 0.11149680614471436,
+        "mean_glyco_mean": 1.0,
+        "rmse": 1.4385344447396244
+      },
+      "low__ERBB2_wild_type": {
+        "n_samples": 251,
+        "n_sensitive": 21,
+        "mean_resist_prob": 0.348287893956401,
+        "mean_glyco_mean": 0.6240039840637451,
+        "bacc": 0.558695652173913,
+        "auroc": 0.6109730848861283,
+        "rmse": 3.3180954217137977
+      },
+      "low__HER2_amplified": {
+        "n_samples": 48,
+        "n_sensitive": 7,
+        "mean_resist_prob": 0.34026474691927433,
+        "mean_glyco_mean": 0.8020833333333334,
+        "bacc": 0.5487804878048781,
+        "auroc": 0.5662020905923345,
+        "rmse": 2.6282201205851337
+      },
+      "low__VUS": {
+        "n_samples": 64,
+        "n_sensitive": 1,
+        "mean_resist_prob": 0.46809628838673234,
+        "mean_glyco_mean": 1.0,
+        "bacc": 0.5,
+        "auroc": 0.9603174603174602,
+        "rmse": 1.777328191791752
+      },
+      "low__VUS; pathogenic_drug_response; CMP_driver": {
+        "n_samples": 4,
+        "n_sensitive": 0,
+        "mean_resist_prob": 0.11150187999010086,
+        "mean_glyco_mean": 1.0,
+        "rmse": 4.124456665159785
+      },
+      "low__pathogenic_drug_response": {
+        "n_samples": 8,
+        "n_sensitive": 8,
+        "mean_resist_prob": 0.15572466421872377,
+        "mean_glyco_mean": 1.0,
+        "rmse": 1.9618753382370409
+      },
+      "low__pathogenic_drug_response; CMP_driver": {
+        "n_samples": 20,
+        "n_sensitive": 13,
+        "mean_resist_prob": 0.11770257093012333,
+        "mean_glyco_mean": 1.0,
+        "bacc": 0.5,
+        "auroc": 0.3571428571428571,
+        "rmse": 3.1387550489219374
+      },
+      "low__wild_type": {
+        "n_samples": 546,
+        "n_sensitive": 22,
+        "mean_resist_prob": 0.4679048775862425,
+        "mean_glyco_mean": 1.0,
+        "bacc": 0.4963566967383761,
+        "auroc": 0.6408743927827898,
+        "rmse": 1.9248623964812555
+      },
+      "high__HER2_amplified": {
+        "n_samples": 6,
+        "n_sensitive": 2,
+        "mean_resist_prob": 0.3573901454607646,
+        "mean_glyco_mean": 1.6494916618750353,
+        "bacc": 0.625,
+        "auroc": 0.5,
+        "rmse": 2.320885465141938
+      }
+    },
+    "n_bins_present": 2,
+    "pass": false
+  },
+  "confidence_analysis": {
+    "high_confidence (\u22650.80)": {
+      "n_samples": 38,
+      "n_sensitive": 24,
+      "n_resistant": 14,
+      "accuracy": 0.6578947368421053,
+      "mean_prob": 0.16199768962044464,
+      "mean_ic50_pred": -2.752054231731515,
+      "mean_ic50_true": -1.3617226085380505,
+      "balanced_accuracy": 0.5357142857142857,
+      "pearson_r": 0.2820668296330965,
+      "rmse": 2.8611691671860955
+    },
+    "medium_confidence (0.40-0.80)": {
+      "n_samples": 913,
+      "n_sensitive": 54,
+      "n_resistant": 859,
+      "accuracy": 0.11391018619934283,
+      "mean_prob": 0.4267989780921142,
+      "mean_ic50_pred": 0.7919460110048083,
+      "mean_ic50_true": 2.4878121185945785,
+      "balanced_accuracy": 0.5204264217651878,
+      "pearson_r": 0.24864705884870897,
+      "rmse": 2.4196964277481134
+    }
+  },
+  "randomized_ptm_control": {
+    "primary_arm": "both_shuffled",
+    "primary_pass": false,
+    "drop_auroc": 0.0115,
+    "drop_bacc": 0.0,
+    "drop_auprc_sensitive": -0.0152,
+    "note": "Positive drop = real PTM beats shuffled (model uses PTM biology)"
+  }
+}

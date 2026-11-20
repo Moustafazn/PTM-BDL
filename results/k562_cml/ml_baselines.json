@@ -1,0 +1,239 @@
+{
+  "case_study": "k562_cml",
+  "fairness_protocol": "v2 \u2014 all 7 issues fixed",
+  "fixes_applied": [
+    "FIX 1: RF max_depth capped at 15 (no unlimited depth)",
+    "FIX 2: GridSearchCV for ALL methods (RF, XGBoost, Ridge, ElasticNet)",
+    "FIX 3: Train on train_idx only (not train+val combined)",
+    "FIX 4: Each method computes own Youden's J threshold on val set",
+    "FIX 5: Same pooled embedding features as DL model",
+    "FIX 6: Separate classifiers per method",
+    "FIX 7: 5-fold CV evaluation"
+  ],
+  "single_split": {
+    "random_forest": {
+      "rmse": 2.2056164663509628,
+      "pearson_r": 0.6479247286762431,
+      "spearman_rho": 0.5940469930418487,
+      "auroc": 0.8104186042142246,
+      "auprc_sensitive": 0.8231582193699452,
+      "balanced_acc": 0.7511038149724281,
+      "threshold_used": 0.5694416985134698,
+      "method": "random_forest",
+      "best_reg_params": {
+        "max_depth": 5,
+        "max_features": "sqrt",
+        "min_samples_leaf": 20,
+        "n_estimators": 200
+      },
+      "best_cls_params": {
+        "class_weight": "balanced",
+        "max_depth": 5,
+        "max_features": "sqrt",
+        "min_samples_leaf": 20,
+        "n_estimators": 100
+      }
+    },
+    "xgboost": {
+      "rmse": 2.1945597488220505,
+      "pearson_r": 0.6523837915372112,
+      "spearman_rho": 0.5990745426820109,
+      "auroc": 0.8139007098861113,
+      "auprc_sensitive": 0.8257177007394663,
+      "balanced_acc": 0.7504744055838946,
+      "threshold_used": 0.572623610496521,
+      "method": "xgboost",
+      "best_reg_params": {
+        "colsample_bytree": 0.5,
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "n_estimators": 200,
+        "reg_alpha": 1.0,
+        "reg_lambda": 10.0,
+        "subsample": 0.7
+      },
+      "best_cls_params": {
+        "colsample_bytree": 0.5,
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "n_estimators": 200,
+        "reg_alpha": 1.0,
+        "reg_lambda": 10.0,
+        "subsample": 0.7
+      }
+    },
+    "ridge": {
+      "rmse": 2.2004602427671305,
+      "pearson_r": 0.6500361710647438,
+      "spearman_rho": 0.5972930020369586,
+      "auroc": 0.8142514255652941,
+      "auprc_sensitive": 0.8295945398564875,
+      "balanced_acc": 0.7529920431380286,
+      "threshold_used": 0.5339494943618774,
+      "method": "ridge",
+      "best_reg_params": {
+        "alpha": 10.0
+      },
+      "best_cls_params": {
+        "C": 0.01
+      }
+    },
+    "elastic_net": {
+      "rmse": 2.2120654999553087,
+      "pearson_r": 0.6453298509399419,
+      "spearman_rho": 0.5964828638247446,
+      "auroc": 0.8121393030152154,
+      "auprc_sensitive": 0.8279539863328063,
+      "balanced_acc": 0.7523485424945279,
+      "threshold_used": 0.5318500995635986,
+      "method": "elastic_net",
+      "best_reg_params": {
+        "alpha": 0.1,
+        "l1_ratio": 0.1
+      },
+      "best_cls_params": {
+        "C": 0.1
+      }
+    }
+  },
+  "cross_validation": {
+    "random_forest": {
+      "pearson_r": {
+        "mean": 0.6482,
+        "std": 0.0133
+      },
+      "rmse": {
+        "mean": 2.2189,
+        "std": 0.0117
+      },
+      "auroc": {
+        "mean": 0.7935,
+        "std": 0.0072
+      },
+      "balanced_acc": {
+        "mean": 0.6309,
+        "std": 0.0167
+      },
+      "auprc_sensitive": {
+        "mean": 0.8093,
+        "std": 0.0076
+      },
+      "spearman_rho": {
+        "mean": 0.5747,
+        "std": 0.0218
+      },
+      "n_valid_folds": 5
+    },
+    "xgboost": {
+      "pearson_r": {
+        "mean": 0.6532,
+        "std": 0.0135
+      },
+      "rmse": {
+        "mean": 2.2063,
+        "std": 0.0139
+      },
+      "auroc": {
+        "mean": 0.7973,
+        "std": 0.0089
+      },
+      "balanced_acc": {
+        "mean": 0.6195,
+        "std": 0.0056
+      },
+      "auprc_sensitive": {
+        "mean": 0.8131,
+        "std": 0.009
+      },
+      "spearman_rho": {
+        "mean": 0.5839,
+        "std": 0.0207
+      },
+      "n_valid_folds": 5
+    },
+    "ridge": {
+      "pearson_r": {
+        "mean": 0.6473,
+        "std": 0.014
+      },
+      "rmse": {
+        "mean": 2.221,
+        "std": 0.0139
+      },
+      "auroc": {
+        "mean": 0.7954,
+        "std": 0.0081
+      },
+      "balanced_acc": {
+        "mean": 0.6267,
+        "std": 0.0128
+      },
+      "auprc_sensitive": {
+        "mean": 0.8131,
+        "std": 0.0077
+      },
+      "spearman_rho": {
+        "mean": 0.5725,
+        "std": 0.0201
+      },
+      "n_valid_folds": 5
+    },
+    "elastic_net": {
+      "pearson_r": {
+        "mean": 0.6463,
+        "std": 0.0137
+      },
+      "rmse": {
+        "mean": 2.224,
+        "std": 0.0125
+      },
+      "auroc": {
+        "mean": 0.7951,
+        "std": 0.0083
+      },
+      "balanced_acc": {
+        "mean": 0.6079,
+        "std": 0.0248
+      },
+      "auprc_sensitive": {
+        "mean": 0.8122,
+        "std": 0.007
+      },
+      "spearman_rho": {
+        "mean": 0.5691,
+        "std": 0.0185
+      },
+      "n_valid_folds": 5
+    }
+  },
+  "external_benchmarks": {
+    "DIPK": {
+      "pearson_r": 0.72,
+      "rmse": null,
+      "ref": "Liu et al., Brief Bioinform 2024 (PMID 38189543)",
+      "features": "kinase activity + drug fingerprints"
+    },
+    "GraphDRP": {
+      "pearson_r": 0.85,
+      "rmse": 1.2,
+      "ref": "Nguyen et al., Bioinformatics 2022 (PMID 34601570)",
+      "features": "drug GNN + cell line gene expression"
+    },
+    "HiDRA": {
+      "pearson_r": 0.89,
+      "rmse": null,
+      "ref": "Jin et al., PNAS 2021 (PMID 33658380)",
+      "features": "hierarchical attention on gene expression"
+    },
+    "GraTransDRP": {
+      "pearson_r": 0.91,
+      "rmse": 0.98,
+      "ref": "Yang et al., Brief Bioinform 2024",
+      "features": "Transformer + GNN (drug graph + gene expression)"
+    }
+  },
+  "feature_dim": 2200,
+  "train_samples": 7458,
+  "val_samples": 1599,
+  "test_samples": 1599
+}

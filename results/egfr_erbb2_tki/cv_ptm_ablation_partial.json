@@ -1,0 +1,54 @@
+{
+  "case_study": "egfr_erbb2_tki",
+  "n_folds": 5,
+  "max_epochs": 30,
+  "status": "in_progress",
+  "folds_completed": 5,
+  "fold_details": [
+    {
+      "fold": 1,
+      "full_auroc": 0.70625,
+      "full_bacc": 0.7096428571428571,
+      "noptm_auroc": 0.7148214285714286,
+      "noptm_bacc": 0.7269642857142857,
+      "delta_auroc": -0.008571428571428563,
+      "delta_bacc": -0.0173214285714286
+    },
+    {
+      "fold": 2,
+      "full_auroc": 0.7754285714285714,
+      "full_bacc": 0.7819047619047619,
+      "noptm_auroc": 0.7647619047619048,
+      "noptm_bacc": 0.7819047619047619,
+      "delta_auroc": 0.010666666666666602,
+      "delta_bacc": 0.0
+    },
+    {
+      "fold": 3,
+      "full_auroc": 0.8247619047619046,
+      "full_bacc": 0.7371428571428571,
+      "noptm_auroc": 0.8011428571428572,
+      "noptm_bacc": 0.7371428571428571,
+      "delta_auroc": 0.02361904761904743,
+      "delta_bacc": 0.0
+    },
+    {
+      "fold": 4,
+      "full_auroc": 0.8620689655172413,
+      "full_bacc": 0.8175287356321839,
+      "noptm_auroc": 0.8484195402298851,
+      "noptm_bacc": 0.7830459770114943,
+      "delta_auroc": 0.013649425287356243,
+      "delta_bacc": 0.03448275862068961
+    },
+    {
+      "fold": 5,
+      "full_auroc": 0.8356681034482759,
+      "full_bacc": 0.8060344827586207,
+      "noptm_auroc": 0.8464439655172413,
+      "noptm_bacc": 0.8175287356321839,
+      "delta_auroc": -0.010775862068965414,
+      "delta_bacc": -0.011494252873563204
+    }
+  ]
+}

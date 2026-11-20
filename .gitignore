@@ -19,7 +19,9 @@ venv/
 env/
 .python-version
 
-# ── Data (large files — not tracked) ──
+# ── Raw and non-release data (not tracked) ──
+# The final processed cohorts, fixed feature arrays, and three production
+# checkpoints are deliberately force-added as the reproducibility bundle.
 data/
 
 # ── OS artifacts ──

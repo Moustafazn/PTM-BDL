@@ -1,0 +1,95 @@
+{
+  "case_study": "k562_cml",
+  "our_metrics": {
+    "mse": 5.195707021821323,
+    "rmse": 2.2794093581060255,
+    "r2": 0.3802449423026828,
+    "pearson_r": 0.6261626307672744,
+    "pearson_p": 8.029586513367773e-175,
+    "spearman_rho": 0.5539019435834276,
+    "spearman_p": 3.006402317356836e-129,
+    "accuracy": 0.758599124452783,
+    "balanced_accuracy": 0.7523485424945279,
+    "f1_score": 0.8058350100603622,
+    "auroc": 0.7963868456569186,
+    "auprc": 0.7478158993232049,
+    "confusion_matrix": [
+      [
+        412,
+        365
+      ],
+      [
+        21,
+        801
+      ]
+    ],
+    "mean_predicted_probability": 0.3943523587361957,
+    "per_class": {
+      "sensitive": {
+        "precision": 0.9515011547344111,
+        "recall": 0.5302445302445302,
+        "f1-score": 0.6809917355371901,
+        "support": 777.0
+      },
+      "resistant": {
+        "precision": 0.6869639794168096,
+        "recall": 0.9744525547445255,
+        "f1-score": 0.8058350100603622,
+        "support": 822.0
+      }
+    }
+  },
+  "external_methods": {
+    "DIPK": {
+      "pearson_r": 0.72,
+      "rmse": null,
+      "reference": "Liu et al., Brief Bioinform 2024 (PMID 38189543)",
+      "features": "kinase activity + drug fingerprints",
+      "note": "Closest comparator \u2014 uses phospho-kinase signals"
+    },
+    "GraphDRP": {
+      "pearson_r": 0.85,
+      "rmse": 1.2,
+      "reference": "Nguyen et al., Bioinformatics 2022 (PMID 34601570)",
+      "features": "drug GNN + gene expression"
+    },
+    "HiDRA": {
+      "pearson_r": 0.89,
+      "rmse": null,
+      "reference": "Jin et al., PNAS 2021 (PMID 33658380)",
+      "features": "hierarchical pathway gene expression"
+    },
+    "GraTransDRP": {
+      "pearson_r": 0.91,
+      "rmse": 0.98,
+      "reference": "Yang et al., Brief Bioinform 2024",
+      "features": "Transformer + GNN fusion"
+    },
+    "DeepCDR": {
+      "pearson_r": 0.88,
+      "rmse": null,
+      "reference": "Li et al., Brief Bioinform 2020 (PMID 31986691)",
+      "features": "genomics + transcriptomics + drug"
+    },
+    "DrugCell": {
+      "pearson_r": 0.8,
+      "rmse": null,
+      "reference": "Kuenzi et al., Cancer Cell 2020 (PMID 33096023)",
+      "features": "GO hierarchy visible NN"
+    }
+  },
+  "cml_specific_benchmarks": {
+    "OHare_2009_structural": {
+      "description": "Structural modeling of BCR-ABL mutant drug sensitivity",
+      "reference": "O'Hare et al., Cancer Cell 2009 (PMID 19573813)",
+      "k562_dasatinib_ic50_nM": 0.8,
+      "k562_imatinib_ic50_nM": 260
+    },
+    "Soverini_2024_clinical": {
+      "description": "CML treatment algorithm with molecular profiling",
+      "reference": "Soverini et al., Haematologica 2024",
+      "dasatinib_response_rate": "85-90% in newly diagnosed CML",
+      "imatinib_response_rate": "75-80% in newly diagnosed CML"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "method": "Leave-One-Drug-Out (LODO)",
+  "description": "Cold-drug evaluation: train on N-1 drugs, select checkpoints and thresholds on an inner validation split, then test on the held-out drug",
+  "per_drug_results": {
+    "Cytarabine": {
+      "n_samples": 2229,
+      "rmse": 4.27977220410369,
+      "n_resistant": 1689,
+      "n_sensitive": 540,
+      "pearson_r": 2.266128075178183e-06,
+      "spearman_rho": 0.01533118096099635,
+      "auroc": 0.5110963094533254,
+      "auprc_sensitive": 0.25120548267855897,
+      "balanced_acc": 0.5,
+      "drug": "Cytarabine",
+      "n_train": 7162,
+      "n_validation": 1265,
+      "validation_threshold": 0.4539490342140198
+    },
+    "Dasatinib": {
+      "n_samples": 2886,
+      "rmse": 2.336030785984818,
+      "n_resistant": 2103,
+      "n_sensitive": 783,
+      "pearson_r": 0.00018574516497972077,
+      "spearman_rho": 0.052321125464240566,
+      "auroc": 0.5185230732232552,
+      "auprc_sensitive": 0.2854775873154795,
+      "balanced_acc": 0.5,
+      "drug": "Dasatinib",
+      "n_train": 6604,
+      "n_validation": 1166,
+      "validation_threshold": 0.48267412185668945
+    },
+    "Imatinib": {
+      "n_samples": 24,
+      "rmse": 2.1960155949481814,
+      "n_resistant": 12,
+      "n_sensitive": 12,
+      "pearson_r": 0.2856400959135491,
+      "spearman_rho": 0.06100720560246357,
+      "auroc": 0.53125,
+      "auprc_sensitive": 0.6573529411764707,
+      "balanced_acc": 0.5416666666666666,
+      "drug": "Imatinib",
+      "n_train": 9037,
+      "n_validation": 1595,
+      "validation_threshold": 0.43419575691223145
+    },
+    "Methotrexate": {
+      "n_samples": 2643,
+      "rmse": 2.7656895689242664,
+      "n_resistant": 1524,
+      "n_sensitive": 1119,
+      "pearson_r": -0.000659308741849496,
+      "spearman_rho": 0.004264850801899685,
+      "auroc": 0.5023566926788307,
+      "auprc_sensitive": 0.4290064907968659,
+      "balanced_acc": 0.5,
+      "drug": "Methotrexate",
+      "n_train": 6811,
+      "n_validation": 1202,
+      "validation_threshold": 0.5034460425376892
+    },
+    "Paclitaxel": {
+      "n_samples": 2874,
+      "rmse": 4.294150414599275,
+      "n_resistant": 141,
+      "n_sensitive": 2733,
+      "pearson_r": 0.0001796227774518233,
+      "spearman_rho": 0.012022072495810141,
+      "auroc": 0.490974509086474,
+      "auprc_sensitive": 0.950987615323573,
+      "balanced_acc": 0.5,
+      "drug": "Paclitaxel",
+      "n_train": 6614,
+      "n_validation": 1168,
+      "validation_threshold": 0.4322102665901184
+    }
+  },
+  "summary": {
+    "n_drugs_total": 5,
+    "n_drugs_evaluated": 5,
+    "mean_pearson_r": 0.05706968424844126,
+    "std_pearson_r": 0.11428562600010424,
+    "mean_rmse": 3.1743317137120464,
+    "std_rmse": 0.9276671684189711,
+    "mean_auroc": 0.5108401168883769,
+    "std_auroc": 0.013727837710012748
+  }
+}

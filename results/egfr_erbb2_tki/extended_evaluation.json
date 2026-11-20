@@ -1,0 +1,57 @@
+{
+  "case_study": "egfr_erbb2_tki",
+  "timestamp": "2026-08-26 16:36:36",
+  "brier_score": {
+    "brier_score": 0.25312092722279,
+    "n_samples": 143,
+    "quality": "poor"
+  },
+  "ptm_grouped_splits": {
+    "n_unique_train": 125,
+    "n_unique_test": 58,
+    "n_overlapping_vectors": 48,
+    "test_samples_with_overlap": 133,
+    "test_samples_unique": 10,
+    "overlap_fraction": 0.9301
+  },
+  "ig_pad_audit": {
+    "total_ranked": 41,
+    "pad_in_top10": 0,
+    "issues": []
+  },
+  "data_accounting": {
+    "total_samples": 951,
+    "unique_cell_lines": 214,
+    "unique_drugs": 6,
+    "drug_names": [
+      "Afatinib",
+      "Erlotinib",
+      "Gefitinib",
+      "Lapatinib",
+      "Osimertinib",
+      "Sapitinib"
+    ],
+    "unique_proteins": 2,
+    "protein_names": [
+      "EGFR",
+      "ERBB2"
+    ],
+    "unique_pairs": 951,
+    "pair_definition": "cell_line \u00d7 drug_name \u00d7 target_protein",
+    "n_sensitive": 78,
+    "n_resistant": 873,
+    "class_ratio": "873:78",
+    "per_protein": {
+      "EGFR": {
+        "samples": 646,
+        "cells": 163,
+        "drugs": 4
+      },
+      "ERBB2": {
+        "samples": 305,
+        "cells": 51,
+        "drugs": 6
+      }
+    }
+  }
+}

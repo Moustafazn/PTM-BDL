@@ -1,0 +1,113 @@
+{
+  "n_seeds": 3,
+  "seeds": [
+    42,
+    123,
+    456
+  ],
+  "per_protein": {
+    "ABL1": {
+      "phospho_mean_importance": [
+        0.0006750432944879018,
+        0.0005221216314718428,
+        0.07322322958304994,
+        0.051583672915626266,
+        0.0034898693023232377,
+        0.0014446941277910241,
+        0.15393444495759923,
+        0.00790873462089318,
+        0.0023872062654959336,
+        1.0130099210433249e-05,
+        3.674856048974107e-05,
+        4.953148277309083e-06
+      ],
+      "phospho_top_slot": 6,
+      "phospho_top_site": "Y264",
+      "n_seeds_contributing": 3,
+      "phospho_site_labels": [
+        "Y89",
+        "Y134",
+        "Y185",
+        "Y226",
+        "Y245",
+        "Y253",
+        "Y264",
+        "Y393",
+        "Y412",
+        "S69",
+        "T735",
+        "S861"
+      ],
+      "cross_seed_top_concordant": false
+    },
+    "CRKL": {
+      "phospho_mean_importance": [
+        0.016494490962246446,
+        2.9554845228732218e-05,
+        0.024664535121574876,
+        0.015045736221155593,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "phospho_top_slot": 2,
+      "phospho_top_site": "Y207",
+      "n_seeds_contributing": 3,
+      "phospho_site_labels": [
+        "Y132",
+        "Y198",
+        "Y207",
+        "Y251"
+      ],
+      "cross_seed_top_concordant": true
+    },
+    "STAT5A": {
+      "phospho_mean_importance": [
+        0.08193142589504356,
+        6.278250852650065e-05,
+        8.237010304254807e-06,
+        1.0744704781955823e-05,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "phospho_top_slot": 0,
+      "phospho_top_site": "Y694",
+      "n_seeds_contributing": 3,
+      "phospho_site_labels": [
+        "Y694",
+        "Y699",
+        "S725",
+        "S779"
+      ],
+      "cross_seed_top_concordant": true
+    }
+  },
+  "top_sites_per_seed": {
+    "ABL1": [
+      6,
+      2,
+      3
+    ],
+    "CRKL": [
+      2,
+      2,
+      2
+    ],
+    "STAT5A": [
+      0,
+      0,
+      0
+    ]
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "case_study": "hela_hdac",
+  "our_metrics": {
+    "mse": 1.2379123005229267,
+    "rmse": 1.1126150729353466,
+    "r2": 0.890809177100589,
+    "pearson_r": 0.9472274743497164,
+    "pearson_p": 1.1461211375954124e-251,
+    "spearman_rho": 0.7424740922738792,
+    "spearman_p": 6.38977785865966e-90,
+    "accuracy": 0.9329388560157791,
+    "balanced_accuracy": 0.9303328645100797,
+    "f1_score": 0.9390681003584229,
+    "auroc": 0.942701984685107,
+    "auprc": 0.9125409103674292,
+    "confusion_matrix": [
+      [
+        211,
+        26
+      ],
+      [
+        8,
+        262
+      ]
+    ],
+    "mean_predicted_probability": 0.3780075242665745,
+    "per_class": {
+      "sensitive": {
+        "precision": 0.9634703196347032,
+        "recall": 0.890295358649789,
+        "f1-score": 0.9254385964912281,
+        "support": 237.0
+      },
+      "resistant": {
+        "precision": 0.9097222222222222,
+        "recall": 0.9703703703703703,
+        "f1-score": 0.9390681003584229,
+        "support": 270.0
+      }
+    }
+  },
+  "external_methods": {
+    "DIPK": {
+      "pearson_r": 0.72,
+      "rmse": null,
+      "auroc": null,
+      "reference": "Liu et al., Brief Bioinform 2024 (PMID 38189543)",
+      "features": "kinase activity profiles + drug fingerprints",
+      "data": "GDSC kinase inhibitor subset",
+      "note": "Closest comparator \u2014 uses phospho-kinase signals like PTM-BDL"
+    },
+    "GraphDRP": {
+      "pearson_r": 0.85,
+      "rmse": 1.2,
+      "auroc": null,
+      "reference": "Nguyen et al., Bioinformatics 2022 (PMID 34601570)",
+      "features": "drug molecular graph + gene expression",
+      "data": "GDSC2 pan-cancer"
+    },
+    "HiDRA": {
+      "pearson_r": 0.89,
+      "rmse": null,
+      "auroc": null,
+      "reference": "Jin et al., PNAS 2021 (PMID 33658380)",
+      "features": "hierarchical pathway-structured gene expression",
+      "data": "GDSC pan-cancer"
+    },
+    "GraTransDRP": {
+      "pearson_r": 0.91,
+      "rmse": 0.98,
+      "auroc": null,
+      "reference": "Yang et al., Brief Bioinform 2024",
+      "features": "Transformer + GNN (drug graph + multi-omics)",
+      "data": "GDSC2 pan-cancer"
+    },
+    "DeepCDR": {
+      "pearson_r": 0.88,
+      "rmse": null,
+      "auroc": null,
+      "reference": "Li et al., Brief Bioinform 2020 (PMID 31986691)",
+      "features": "genomics + transcriptomics + drug structure",
+      "data": "GDSC pan-cancer"
+    },
+    "DrugCell": {
+      "pearson_r": 0.8,
+      "rmse": null,
+      "auroc": null,
+      "reference": "Kuenzi et al., Cancer Cell 2020 (PMID 33096023)",
+      "features": "gene expression \u2192 GO hierarchy visible NN",
+      "data": "GDSC pan-cancer"
+    },
+    "PTM-Crosstalk-DL": {
+      "pearson_r": null,
+      "rmse": null,
+      "auroc": null,
+      "reference": "Liu et al., JBC 2025",
+      "url": "https://www.jbc.org/article/S0021-9258(25)02370-1/fulltext",
+      "features": "DL for PTM crosstalk on Hsp90 + drug binding",
+      "data": "Hsp90 PTM crosstalk (single protein)",
+      "note": "Direct PTM-crosstalk comparator \u2014 uses DL to model how PTM combinations affect drug binding. Single-protein (Hsp90) vs PTM-BDL protein-agnostic. No multi-cell-line drug response prediction.",
+      "comparison_advantage": "PTM-BDL advantages: (1) protein-agnostic typed self-attention, (2) multi-modal fusion (seq + struct + drug + PTM), (3) dose-response PTM dynamics, (4) cross-PTM-type crosstalk (phospho\u2194acetyl), (5) drug response prediction (IC50 + resistance)"
+    }
+  },
+  "key_finding": "PTM-BDL uses PTM dose-response (DrugPTM-Bench) instead of gene expression \u2014 a fundamentally different input signal"
+}

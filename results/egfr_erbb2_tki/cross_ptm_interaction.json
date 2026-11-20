@@ -1,0 +1,36 @@
+{
+  "analysis": "Fixed-model inclusion-exclusion joint PTM-class removal",
+  "outcome": "held-out test AUROC",
+  "case_study": "egfr_erbb2_tki",
+  "ptm_types": [
+    "phosphorylation",
+    "glycosylation"
+  ],
+  "reference_state": "removed PTM levels set to 1.0; deltas set to 0.0",
+  "arms": {
+    "full": {
+      "key": "full",
+      "auroc": 0.8753180661577609
+    },
+    "no_primary": {
+      "key": "glyco_only",
+      "auroc": 0.8759541984732825
+    },
+    "no_secondary": {
+      "key": "no_glyco",
+      "auroc": 0.8746819338422391
+    },
+    "no_both": {
+      "key": "no_ptm",
+      "auroc": 0.8724554707379135
+    }
+  },
+  "effects": {
+    "primary_removal_loss": -0.0006361323155216203,
+    "secondary_removal_loss": 0.0006361323155217313,
+    "joint_removal_loss": 0.002862595419847347,
+    "nonadditive_joint_reliance": 0.002862595419847236
+  },
+  "interpretation": "A positive nonadditive_joint_reliance value means that jointly resetting both PTM classes reduced the fitted model's AUROC more than the sum of resetting each class separately.",
+  "scope": "This is a model-level joint-reliance contrast on one held-out split. It does not establish causal biological PTM crosstalk."
+}

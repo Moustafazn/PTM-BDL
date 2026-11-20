@@ -1,0 +1,121 @@
+{
+  "method": "Inference-only Permutation Feature Importance (Breiman 2001, Fisher et al. 2019)",
+  "note": "Same trained model, PTM columns shuffled at test time only. No retraining \u2014 directly tests model reliance on PTM features.",
+  "model_used": "best_model.pt",
+  "reference_full_metrics": {
+    "accuracy": 0.916083916083916,
+    "balanced_acc": 0.8406488549618321,
+    "sensitivity": 0.9312977099236641,
+    "specificity": 0.75,
+    "f1": 0.953125,
+    "f1_sensitive": 0.6,
+    "f1_macro": 0.7765625,
+    "auroc": 0.8753180661577609,
+    "auprc_resistant": 0.9828561892467816,
+    "auprc_sensitive": 0.6674776639672276,
+    "mean_prob": 0.47926931807419637,
+    "tp": 122,
+    "tn": 9,
+    "fp": 3,
+    "fn": 9,
+    "mse": 3.2407946993529744,
+    "rmse": 1.8002207362856852,
+    "pearson_r": 0.5969992394122848,
+    "loss": 3.3464022477467856,
+    "threshold": 0.312113881111145
+  },
+  "arms": {
+    "phospho_shuffled": {
+      "shuffled_metrics": {
+        "accuracy": 0.916083916083916,
+        "balanced_acc": 0.8406488549618321,
+        "sensitivity": 0.9312977099236641,
+        "specificity": 0.75,
+        "f1": 0.953125,
+        "f1_sensitive": 0.6,
+        "f1_macro": 0.7765625,
+        "auroc": 0.8463740458015268,
+        "auprc_resistant": 0.9643908547649546,
+        "auprc_sensitive": 0.667712207782146,
+        "mean_prob": 0.47949915723158765,
+        "tp": 122,
+        "tn": 9,
+        "fp": 3,
+        "fn": 9,
+        "mse": 3.240329977852516,
+        "rmse": 1.800091658180915,
+        "pearson_r": 0.5973051756087575,
+        "loss": 3.3458145989312067,
+        "threshold": 0.3129633069038391
+      },
+      "drops": {
+        "drop_auroc": 0.0289,
+        "drop_bacc": 0.0,
+        "drop_auprc_sensitive": -0.0002,
+        "drop_rmse": -0.0001
+      }
+    },
+    "glyco_shuffled": {
+      "shuffled_metrics": {
+        "accuracy": 0.8741258741258742,
+        "balanced_acc": 0.8555979643765903,
+        "sensitivity": 0.8778625954198473,
+        "specificity": 0.8333333333333334,
+        "f1": 0.9274193548387097,
+        "f1_sensitive": 0.5263157894736842,
+        "f1_macro": 0.726867572156197,
+        "auroc": 0.8743638676844784,
+        "auprc_resistant": 0.9827847579394231,
+        "auprc_sensitive": 0.6647044772044773,
+        "mean_prob": 0.47928747998459353,
+        "tp": 115,
+        "tn": 10,
+        "fp": 2,
+        "fn": 16,
+        "mse": 3.241670446214319,
+        "rmse": 1.8004639530449698,
+        "pearson_r": 0.5967485399016054,
+        "loss": 3.3472762372758655,
+        "threshold": 0.41683444380760193
+      },
+      "drops": {
+        "drop_auroc": 0.001,
+        "drop_bacc": -0.0149,
+        "drop_auprc_sensitive": 0.0028,
+        "drop_rmse": 0.0002
+      }
+    },
+    "both_shuffled": {
+      "shuffled_metrics": {
+        "accuracy": 0.9020979020979021,
+        "balanced_acc": 0.8330152671755725,
+        "sensitivity": 0.916030534351145,
+        "specificity": 0.75,
+        "f1": 0.9448818897637795,
+        "f1_sensitive": 0.5625000000000001,
+        "f1_macro": 0.7536909448818898,
+        "auroc": 0.8409669211195929,
+        "auprc_resistant": 0.9640057442411962,
+        "auprc_sensitive": 0.6344698407540493,
+        "mean_prob": 0.4795170027788702,
+        "tp": 120,
+        "tn": 9,
+        "fp": 3,
+        "fn": 11,
+        "mse": 3.2412701689023367,
+        "rmse": 1.8003527901226295,
+        "pearson_r": 0.5970490931812488,
+        "loss": 3.3467533588409424,
+        "threshold": 0.31430497765541077
+      },
+      "drops": {
+        "drop_auroc": 0.0344,
+        "drop_bacc": 0.0076,
+        "drop_auprc_sensitive": 0.033,
+        "drop_rmse": 0.0001
+      }
+    }
+  },
+  "primary_arm": "both_shuffled",
+  "primary_pass": true
+}

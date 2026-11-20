@@ -1,0 +1,118 @@
+{
+  "n_seeds": 3,
+  "seeds": [
+    42,
+    123,
+    456
+  ],
+  "per_protein": {
+    "EP300": {
+      "phospho_mean_importance": [
+        7.153738322705925e-07,
+        1.2021983501932076e-05,
+        7.658833368987908e-07,
+        7.877714955670555e-07,
+        7.008020652769322e-07,
+        1.0064755378556989e-05,
+        1.8822523952306055e-05,
+        1.415079335092489e-05
+      ],
+      "phospho_top_slot": 6,
+      "phospho_top_site": "ptm_T445",
+      "phospho_site_labels": [
+        "ptm_S29",
+        "ptm_Y72",
+        "ptm_S393",
+        "ptm_S406",
+        "ptm_S421",
+        "ptm_S423",
+        "ptm_T445",
+        "ptm_S468"
+      ],
+      "acetyl_mean_importance": [
+        1.913912039223457e-05,
+        7.669858754866253e-05,
+        8.966566203601663e-05,
+        1.6256593710295423e-05,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acetyl_top_slot": 2,
+      "acetyl_top_site": "K1558",
+      "acetyl_site_labels": [
+        "K1499",
+        "K1549",
+        "K1558",
+        "K1560",
+        "K1568",
+        "K1574",
+        "K1583"
+      ],
+      "n_seeds_contributing": 3,
+      "cross_seed_phospho_concordant": false
+    },
+    "HDAC1": {
+      "phospho_mean_importance": [
+        7.341254766313199e-07,
+        6.709531422122161e-07,
+        1.841700756699538e-05,
+        7.985568293567002e-07,
+        1.36599769670435e-05,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "phospho_top_slot": 2,
+      "phospho_top_site": "S393",
+      "phospho_site_labels": [
+        "S29",
+        "Y72",
+        "S393",
+        "S406",
+        "S421",
+        "S423",
+        "T445",
+        "S468"
+      ],
+      "acetyl_mean_importance": [
+        5.690718777392097e-06,
+        4.847828940057752e-06,
+        8.645547020513789e-07,
+        8.778068298909147e-07,
+        1.0488246387903763e-05,
+        1.130928110034309e-05,
+        1.0998882184291384e-05
+      ],
+      "acetyl_top_slot": 5,
+      "acetyl_top_site": "secondary_slot05",
+      "acetyl_site_labels": [
+        "secondary_slot00",
+        "secondary_slot01",
+        "secondary_slot02",
+        "secondary_slot03",
+        "secondary_slot04",
+        "secondary_slot05",
+        "secondary_slot06"
+      ],
+      "n_seeds_contributing": 3,
+      "cross_seed_phospho_concordant": false
+    }
+  },
+  "top_sites_per_seed": {
+    "EP300": {
+      "phospho": [
+        6,
+        7,
+        5
+      ]
+    },
+    "HDAC1": {
+      "phospho": [
+        2,
+        2,
+        4
+      ]
+    }
+  }
+}

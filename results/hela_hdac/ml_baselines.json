@@ -1,0 +1,218 @@
+{
+  "case_study": "hela_hdac",
+  "fairness_protocol": "v2 \u2014 all 7 issues fixed",
+  "fixes_applied": [
+    "FIX 1: RF max_depth capped at 15 (no unlimited depth)",
+    "FIX 2: GridSearchCV for ALL methods (RF, XGBoost, Ridge, ElasticNet)",
+    "FIX 3: Train on train_idx only (not train+val combined)",
+    "FIX 4: Each method computes own Youden's J threshold on val set",
+    "FIX 5: Same pooled embedding features as DL model",
+    "FIX 6: Separate classifiers per method",
+    "FIX 7: 5-fold CV evaluation"
+  ],
+  "single_split": {
+    "random_forest": {
+      "rmse": 1.070610336774921,
+      "pearson_r": 0.949226852477708,
+      "spearman_rho": 0.7554150681415585,
+      "auroc": 0.9524691358024692,
+      "auprc_sensitive": 0.9585405894322416,
+      "balanced_acc": 0.9472573839662447,
+      "threshold_used": 0.8580816981292003,
+      "method": "random_forest",
+      "best_reg_params": {
+        "max_depth": 5,
+        "max_features": "sqrt",
+        "min_samples_leaf": 20,
+        "n_estimators": 100
+      },
+      "best_cls_params": {
+        "class_weight": "balanced",
+        "max_depth": 3,
+        "max_features": "sqrt",
+        "min_samples_leaf": 50,
+        "n_estimators": 100
+      }
+    },
+    "xgboost": {
+      "rmse": 1.0677607949867185,
+      "pearson_r": 0.9496527830020833,
+      "spearman_rho": 0.759795920002435,
+      "auroc": 0.9518205969682763,
+      "auprc_sensitive": 0.9568694304153632,
+      "balanced_acc": 0.9472573839662447,
+      "threshold_used": 0.9,
+      "method": "xgboost",
+      "best_reg_params": {
+        "colsample_bytree": 0.5,
+        "learning_rate": 0.05,
+        "max_depth": 2,
+        "n_estimators": 200,
+        "reg_alpha": 1.0,
+        "reg_lambda": 10.0,
+        "subsample": 0.7
+      },
+      "best_cls_params": {
+        "colsample_bytree": 0.5,
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "n_estimators": 200,
+        "reg_alpha": 1.0,
+        "reg_lambda": 10.0,
+        "subsample": 0.7
+      }
+    },
+    "ridge": {
+      "rmse": 1.0613695750813885,
+      "pearson_r": 0.9499933229536135,
+      "spearman_rho": 0.75490912110717,
+      "auroc": 0.9421003281762775,
+      "auprc_sensitive": 0.9549302506237541,
+      "balanced_acc": 0.9379981247069855,
+      "threshold_used": 0.8825932145118713,
+      "method": "ridge",
+      "best_reg_params": {
+        "alpha": 10.0
+      },
+      "best_cls_params": {
+        "C": 1.0
+      }
+    },
+    "elastic_net": {
+      "rmse": 1.062510770855333,
+      "pearson_r": 0.9497398066178726,
+      "spearman_rho": 0.737614751630346,
+      "auroc": 0.9423581809657758,
+      "auprc_sensitive": 0.9531440996792919,
+      "balanced_acc": 0.9324425691514299,
+      "threshold_used": 0.8973475098609924,
+      "method": "elastic_net",
+      "best_reg_params": {
+        "alpha": 0.1,
+        "l1_ratio": 0.1
+      },
+      "best_cls_params": {
+        "C": 0.1
+      }
+    }
+  },
+  "cross_validation": {
+    "random_forest": {
+      "pearson_r": {
+        "mean": 0.9533,
+        "std": 0.0023
+      },
+      "rmse": {
+        "mean": 1.0555,
+        "std": 0.0165
+      },
+      "auroc": {
+        "mean": 0.9579,
+        "std": 0.0084
+      },
+      "balanced_acc": {
+        "mean": 0.9552,
+        "std": 0.0039
+      },
+      "auprc_sensitive": {
+        "mean": 0.9634,
+        "std": 0.0053
+      },
+      "spearman_rho": {
+        "mean": 0.7558,
+        "std": 0.0082
+      },
+      "n_valid_folds": 5
+    },
+    "xgboost": {
+      "pearson_r": {
+        "mean": 0.954,
+        "std": 0.0019
+      },
+      "rmse": {
+        "mean": 1.0479,
+        "std": 0.0131
+      },
+      "auroc": {
+        "mean": 0.9558,
+        "std": 0.0062
+      },
+      "balanced_acc": {
+        "mean": 0.7731,
+        "std": 0.223
+      },
+      "auprc_sensitive": {
+        "mean": 0.9591,
+        "std": 0.0052
+      },
+      "spearman_rho": {
+        "mean": 0.7655,
+        "std": 0.0079
+      },
+      "n_valid_folds": 5
+    },
+    "ridge": {
+      "pearson_r": {
+        "mean": 0.9537,
+        "std": 0.0022
+      },
+      "rmse": {
+        "mean": 1.0508,
+        "std": 0.0146
+      },
+      "auroc": {
+        "mean": 0.9544,
+        "std": 0.0083
+      },
+      "balanced_acc": {
+        "mean": 0.9555,
+        "std": 0.0043
+      },
+      "auprc_sensitive": {
+        "mean": 0.9626,
+        "std": 0.0061
+      },
+      "spearman_rho": {
+        "mean": 0.7463,
+        "std": 0.0094
+      },
+      "n_valid_folds": 5
+    },
+    "elastic_net": {
+      "pearson_r": {
+        "mean": 0.9536,
+        "std": 0.0022
+      },
+      "rmse": {
+        "mean": 1.0513,
+        "std": 0.0144
+      },
+      "auroc": {
+        "mean": 0.9576,
+        "std": 0.005
+      },
+      "balanced_acc": {
+        "mean": 0.9564,
+        "std": 0.004
+      },
+      "auprc_sensitive": {
+        "mean": 0.9548,
+        "std": 0.0054
+      },
+      "spearman_rho": {
+        "mean": 0.7426,
+        "std": 0.0061
+      },
+      "n_valid_folds": 5
+    }
+  },
+  "feature_dim": 2206,
+  "train_samples": 2361,
+  "val_samples": 506,
+  "test_samples": 507,
+  "references": [
+    "Baptista et al., Brief Bioinform 2021 (PMID 33169146) \u2014 DRP baselines",
+    "Chen & Guestrin, KDD 2016 \u2014 XGBoost",
+    "Yang et al., Brief Bioinform 2024 \u2014 drug response benchmarks"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "method": "Inference-only Permutation Feature Importance (Breiman 2001)",
+  "model_used": "best_model.pt",
+  "reference_full_metrics": {
+    "accuracy": 0.7285803627267042,
+    "balanced_acc": 0.7261458538830802,
+    "sensitivity": 0.8126520681265207,
+    "specificity": 0.6396396396396397,
+    "f1": 0.7548022598870056,
+    "f1_sensitive": 0.696078431372549,
+    "f1_macro": 0.7254403456297773,
+    "auroc": 0.7852711940303182,
+    "auprc_resistant": 0.7248826039019539,
+    "auprc_sensitive": 0.8010083556379193,
+    "mean_prob": 0.38104522408098634,
+    "tp": 668,
+    "tn": 497,
+    "fp": 280,
+    "fn": 154,
+    "mse": 5.383934025822075,
+    "rmse": 2.3203305854602,
+    "pearson_r": 0.6192708811884381,
+    "loss": 5.495150911808014,
+    "threshold": 0.4449276030063629
+  },
+  "arms": {
+    "phospho_shuffled": {
+      "shuffled_metrics": {
+        "accuracy": 0.758599124452783,
+        "balanced_acc": 0.7523837706319458,
+        "sensitivity": 0.9732360097323601,
+        "specificity": 0.5315315315315315,
+        "f1": 0.8056394763343404,
+        "f1_sensitive": 0.6815181518151814,
+        "f1_macro": 0.7435788140747609,
+        "auroc": 0.7507100426808456,
+        "auprc_resistant": 0.6879748448100692,
+        "auprc_sensitive": 0.7902678648735295,
+        "mean_prob": 0.3790133001843119,
+        "tp": 800,
+        "tn": 413,
+        "fp": 364,
+        "fn": 22,
+        "mse": 5.4133706615608554,
+        "rmse": 2.3266651373931864,
+        "pearson_r": 0.616924041860552,
+        "loss": 5.52566841840744,
+        "threshold": 0.444914847612381
+      },
+      "drops": {
+        "drop_auroc": 0.0346,
+        "drop_bacc": -0.0262,
+        "drop_auprc_sensitive": 0.0107
+      }
+    }
+  },
+  "primary_arm": "phospho_shuffled",
+  "primary_pass": true
+}

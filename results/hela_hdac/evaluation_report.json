@@ -1,0 +1,497 @@
+{
+  "case_study": "hela_hdac",
+  "overall_metrics": {
+    "mse": 1.1601220758840123,
+    "rmse": 1.077089632242374,
+    "r2": 0.8976707121530034,
+    "pearson_r": 0.9490567191046855,
+    "pearson_p": 1.9625401256156126e-255,
+    "spearman_rho": 0.7301914615580501,
+    "spearman_p": 1.4003413916603602e-85,
+    "accuracy": 0.9368836291913215,
+    "balanced_accuracy": 0.93455227379278,
+    "f1_score": 0.9424460431654677,
+    "auroc": 0.9457258946710424,
+    "auprc": 0.9155881391874555,
+    "confusion_matrix": [
+      [
+        213,
+        24
+      ],
+      [
+        8,
+        262
+      ]
+    ],
+    "mean_predicted_probability": 0.36731711823697144,
+    "per_class": {
+      "sensitive": {
+        "precision": 0.9638009049773756,
+        "recall": 0.8987341772151899,
+        "f1-score": 0.9301310043668122,
+        "support": 237.0
+      },
+      "resistant": {
+        "precision": 0.916083916083916,
+        "recall": 0.9703703703703703,
+        "f1-score": 0.9424460431654677,
+        "support": 270.0
+      }
+    }
+  },
+  "per_drug": {
+    "Vorinostat": {
+      "mse": 1.1239341531094496,
+      "rmse": 1.0601576076741843,
+      "r2": -0.00872909938629629,
+      "pearson_r": -0.07723263257944923,
+      "pearson_p": 0.1881547310075572,
+      "spearman_rho": -0.02665154780428415,
+      "spearman_p": 0.6501534712301985,
+      "accuracy": 0.9212328767123288,
+      "balanced_accuracy": 0.5,
+      "f1_score": 0.9590017825311943,
+      "auroc": 0.46605786326167775,
+      "auprc": 0.9180462058696932,
+      "confusion_matrix": [
+        [
+          0,
+          23
+        ],
+        [
+          0,
+          269
+        ]
+      ],
+      "mean_predicted_probability": 0.6297391881681469,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 23.0
+        },
+        "resistant": {
+          "precision": 0.9212328767123288,
+          "recall": 1.0,
+          "f1-score": 0.9590017825311943,
+          "support": 269.0
+        }
+      }
+    },
+    "Romidepsin": {
+      "mse": 1.190918882003614,
+      "rmse": 1.0912922990673095,
+      "r2": -0.07228736618106102,
+      "pearson_r": -0.054439274889714374,
+      "pearson_p": 0.4314796342095235,
+      "spearman_rho": -0.07128538158081085,
+      "spearman_p": 0.30270938144574083,
+      "accuracy": 1.0,
+      "balanced_accuracy": 0.0,
+      "f1_score": 0.0,
+      "auroc": 0.0,
+      "auprc": 0.0,
+      "confusion_matrix": [
+        [
+          0
+        ]
+      ],
+      "mean_predicted_probability": 0.0021770584895783127
+    },
+    "CUDC-101": {
+      "mse": 2.289790029554416,
+      "rmse": 1.5132052172638104,
+      "r2": -79.99588993072595,
+      "pearson_r": 0.5050975360981027,
+      "pearson_p": 0.6629130306641731,
+      "spearman_rho": 0.8660254037844387,
+      "spearman_p": 0.33333333333333326,
+      "accuracy": 0.3333333333333333,
+      "balanced_accuracy": 0.5,
+      "f1_score": 0.5,
+      "auroc": 0.5,
+      "auprc": 0.5,
+      "confusion_matrix": [
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "mean_predicted_probability": 0.6297774314880371,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 2.0
+        },
+        "resistant": {
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1-score": 0.5,
+          "support": 1.0
+        }
+      }
+    }
+  },
+  "drug_group_metrics": {
+    "HDAC_inhibitor": {
+      "mse": 1.1520182230026834,
+      "rmse": 1.073321118306485,
+      "r2": 0.8990377329072312,
+      "pearson_r": 0.9499231542142975,
+      "pearson_p": 3.0371442875580915e-255,
+      "spearman_rho": 0.7322233864057119,
+      "spearman_p": 1.2993944707586224e-85,
+      "accuracy": 0.9383697813121272,
+      "balanced_accuracy": 0.9359848123788644,
+      "f1_score": 0.9439421338155516,
+      "auroc": 0.9472087185841833,
+      "auprc": 0.9172746841084678,
+      "confusion_matrix": [
+        [
+          211,
+          23
+        ],
+        [
+          8,
+          261
+        ]
+      ],
+      "mean_predicted_probability": 0.3664776898390997,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.9634703196347032,
+          "recall": 0.9017094017094017,
+          "f1-score": 0.9315673289183223,
+          "support": 234.0
+        },
+        "resistant": {
+          "precision": 0.9190140845070423,
+          "recall": 0.9702602230483272,
+          "f1-score": 0.9439421338155516,
+          "support": 269.0
+        }
+      }
+    }
+  },
+  "per_drug_exclusion": {
+    "excluding_Romidepsin": {
+      "n_samples": 296,
+      "auroc": 0.5052706552706553,
+      "rmse": 1.0668500151448286
+    }
+  },
+  "leakage_analysis": {
+    "n_samples": 3374,
+    "n_train": 2361,
+    "n_val": 506,
+    "n_test": 507,
+    "ptm_baseline_unique": 12,
+    "ptm_baseline_diversity": 0.0036,
+    "ptm_delta_unique": 6,
+    "ptm_delta_diversity": 0.0018,
+    "ptm_all_unique": 40,
+    "ptm_all_diversity": 0.0119,
+    "cell_line_overlap": {
+      "n_train_cells": 928,
+      "n_val_cells": 404,
+      "n_test_cells": 404,
+      "train_test_overlap": 373,
+      "train_val_overlap": 375,
+      "note": "Cell-line overlap is expected for drug-wise evaluation; cold-cell evaluation (Q4) eliminates this overlap."
+    },
+    "drug_overlap": {
+      "n_train_drugs": 6,
+      "n_test_drugs": 4,
+      "train_test_overlap": 4,
+      "note": "Drug overlap is expected for standard splits; cold-drug LODO evaluation (Q4) eliminates this overlap."
+    },
+    "ptm_provenance": {
+      "n_measured_high_conf": 8,
+      "n_propagated_lower_conf": 3366,
+      "frac_measured": 0.0024,
+      "test_measured": 2,
+      "test_propagated": 505
+    },
+    "institutional_separation": {
+      "ptm_data_source": "DrugPTM-Bench (Xie lab, phosphoproteomics, mass spectrometry)",
+      "ic50_data_source": "GDSC2 (Sanger Institute, pharmacology, viability assays)",
+      "modality_independence": true,
+      "explanation": "PTM measurements (phosphoproteomics via LC-MS/MS) and IC50 labels (dose-response viability assays) are from different experimental modalities performed at different institutions. No shared measurement apparatus or experimental protocol."
+    },
+    "constant_channels": {
+      "n_constant": 9,
+      "columns": [
+        "delta_ptm_S29",
+        "delta_ptm_Y72",
+        "delta_ptm_S406",
+        "delta_ptm_T445",
+        "delta_ptm_S468",
+        "delta_secondary_slot00",
+        "delta_secondary_slot04",
+        "delta_secondary_slot05",
+        "delta_secondary_slot06"
+      ],
+      "note": "Constant channels contribute zero IG attribution and should be documented (e.g., EGFR glyco baseline is uniformly 1.0 for all samples \u2014 see Q3 ablation for their exclusion)."
+    }
+  },
+  "calibration": {
+    "overall_ece": {
+      "ece": 0.1670479865012694,
+      "mce": 0.2855314410338967,
+      "n_bins": 10,
+      "bin_edges": [
+        0.0,
+        0.1,
+        0.2,
+        0.30000000000000004,
+        0.4,
+        0.5,
+        0.6000000000000001,
+        0.7000000000000001,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "bin_accs": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.9152542372881356,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bin_confs": [
+        0.0021771417506794744,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.6297227962542389,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bin_counts": [
+        212,
+        0,
+        0,
+        0,
+        0,
+        0,
+        295,
+        0,
+        0,
+        0
+      ]
+    },
+    "per_drug_ece": {
+      "overall": {
+        "ece": 0.1670479865012694,
+        "mce": 0.2855314410338967,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.9152542372881356,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0021771417506794744,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.6297227962542389,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          212,
+          0,
+          0,
+          0,
+          0,
+          0,
+          295,
+          0,
+          0,
+          0
+        ]
+      },
+      "A485": {
+        "ece": null,
+        "n_samples": 1,
+        "note": "Too few samples"
+      },
+      "CUDC-101": {
+        "ece": null,
+        "n_samples": 3,
+        "note": "Too few samples"
+      },
+      "Romidepsin": {
+        "ece": 0.0021770584995094776,
+        "mce": 0.0021770584995094776,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0021770584995094776,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          211,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "n_samples": 211
+      },
+      "Vorinostat": {
+        "ece": 0.29151055257614344,
+        "mce": 0.29151055257614344,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.9212328767123288,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.6297223241361853,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          292,
+          0,
+          0,
+          0
+        ],
+        "n_samples": 292
+      }
+    }
+  },
+  "ig_scale_audit": {
+    "ig_value_ranges": {},
+    "issues_found": []
+  },
+  "frozen_encoders": {
+    "trainable": 15795587,
+    "frozen": "ESM-2(650M)+ChemBERTa(77M)+GearNet all FROZEN"
+  },
+  "references": {
+    "primary_data": "Badkul et al., DrugPTM-Bench 2024",
+    "dose_resolved_proteomics": "Hartl et al., Cell Reports 2024",
+    "hdac_resistance": "Lasko et al., Nat Rev Drug Discov 2024 (PMID 38382638)",
+    "hat_mechanism": "Narita et al., Nat Rev Mol Cell Biol 2019 (PMID 30487433)",
+    "a485_a486": "Lasko et al., Nature 2017 (PMID 29211713)",
+    "cudc101": "Lai et al., J Med Chem 2010 (PMID 20568778)",
+    "ptm_crosstalk": "Fischle et al., Nature 2003 (PMID 14573844)",
+    "acetyl_phospho_crosstalk": "Ardito et al., IJMS 2019",
+    "romidepsin_rtk": "Park et al., Nat Comm 2025",
+    "dl_ptm_crosstalk": "Liu et al., JBC 2025",
+    "hdac3_akt": "Gupta et al., Leukemia 2017"
+  }
+}

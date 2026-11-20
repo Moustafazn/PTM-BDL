@@ -50,7 +50,12 @@ The current submission materials are maintained in the local `paper/` directory.
 
 The saved JSON outputs in `results/<case_study>/` are the numerical sources for the manuscript tables, quantitative figures and reported results. Editorial revisions do not alter these outputs. The local plotting helper `paper/scripts/render_result_figures.py` reads the original JSON files to generate the manuscript attribution and supplementary calibration figures. Existing case-study plotting commands below remain available for the wider analysis outputs.
 
-Processed datasets, saved splits and model checkpoints are stored outside the tracked source tree. Acquisition and harmonisation instructions are provided in the [data download guide](docs/DATA_DOWNLOAD_GUIDE.md).
+The final processed cohorts, fixed feature arrays, saved production splits,
+classification thresholds, and numerical result records are versioned with the
+repository. The three production checkpoints are tracked through Git LFS under
+`data/models/<case_study>/best_model.pt`. Raw source downloads and
+non-production checkpoints remain excluded; acquisition and harmonisation
+instructions are provided in the [data download guide](docs/DATA_DOWNLOAD_GUIDE.md).
 
 ## Project Structure
 

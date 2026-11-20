@@ -1,0 +1,182 @@
+{
+  "A750P": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "A750P_L747_E749del": {
+    "sequence_length": 1207,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "C797S": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "E746_A750del": {
+    "sequence_length": 1205,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "G719S": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "L747_E749del": {
+    "sequence_length": 1207,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "L747_P753delinsS": {
+    "sequence_length": 1204,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "L858R": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "L858R_T790M": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "L858R_T790M_C797S": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "L861Q": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "P753S": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "S768I": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "T751I": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "T790M": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "exon19del_E746_A750_T790M": {
+    "sequence_length": 1205,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "wild_type": {
+    "sequence_length": 1210,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  },
+  "ERBB2_wild_type": {
+    "sequence_length": 1255,
+    "per_residue_shape": [
+      1022,
+      1280
+    ],
+    "pooled_shape": [
+      1280
+    ]
+  }
+}

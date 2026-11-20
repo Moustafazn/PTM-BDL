@@ -1,0 +1,24 @@
+{
+  "method": "Cross-dataset (GDSC2 -> CTRPv2)",
+  "description": "GDSC-trained model predictions evaluated against CTRPv2 IC50 ground truth for overlapping (cell_line, drug) pairs. Ref: Basu et al. Cell 2013; Rees et al. Nat Chem Biol 2016.",
+  "ctrp_source": "/Users/moustafazein/PycharmProjects/PTM-BDL/data/processed/ctrp/ctrp_drug_responses.csv",
+  "overall": {
+    "n_samples": 986,
+    "pred_vs_ctrp_pearson_r": 2.124817065063187e-05,
+    "pred_vs_ctrp_spearman_rho": 0.022244505233322744,
+    "pred_vs_ctrp_rmse": 0.848207134448806,
+    "gdsc_vs_ctrp_pearson_r": 0.6722263031532225,
+    "gdsc_vs_ctrp_spearman_rho": 0.6942723303634285
+  },
+  "per_drug": {
+    "Vorinostat": {
+      "n_samples": 986,
+      "pred_vs_ctrp_pearson_r": 2.124817065063187e-05,
+      "gdsc_vs_ctrp_pearson_r": 0.6722263031532225
+    }
+  },
+  "drugs_in_overlap": [
+    "Vorinostat"
+  ],
+  "n_overlap_pairs": 986
+}

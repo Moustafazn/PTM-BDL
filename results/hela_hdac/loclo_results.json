@@ -1,0 +1,82 @@
+{
+  "case_study": "hela_hdac",
+  "method": "Leave-One-Cell-Line-Out (LOCLO) by tissue group",
+  "grouping": "tissue_type (cancer type / TCGA_DESC)",
+  "rationale": "Tests whether PTM-BDL generalizes across cancer types for HDAC inhibitor response prediction. Cell-blind split per Sada Del Real et al., Brief Bioinf 2026.",
+  "per_group_results": {
+    "leukemia": {
+      "group": "leukemia",
+      "n_train": 2888,
+      "n_test": 486,
+      "training_time_seconds": 1934.4,
+      "mse": 1.2859190364435156,
+      "rmse": 1.1339837020184707,
+      "r2": 0.8968922861983499,
+      "pearson_r": 0.950269754143273,
+      "pearson_p": 2.3251493234220272e-247,
+      "spearman_rho": 0.749940707902149,
+      "spearman_p": 6.63171406269996e-89,
+      "accuracy": 0.9876543209876543,
+      "balanced_accuracy": 0.9852941176470589,
+      "f1_score": 0.9894736842105263,
+      "auroc": 0.9853201919065498,
+      "auprc": 0.9791671761636912,
+      "mean_predicted_probability": 0.40961481339907574,
+      "validation_threshold": 0.6749229431152344
+    },
+    "other": {
+      "group": "other",
+      "n_train": 642,
+      "n_test": 2732,
+      "training_time_seconds": 701.2,
+      "mse": 13.393694821461924,
+      "rmse": 3.659739720453071,
+      "r2": -0.11006407578376831,
+      "pearson_r": 0.8892184487119408,
+      "pearson_p": 0.0,
+      "spearman_rho": 0.7607649044409086,
+      "spearman_p": 0.0,
+      "accuracy": 0.7192532942898975,
+      "balanced_accuracy": 0.7287264199567055,
+      "f1_score": 0.6524694154961486,
+      "auroc": 0.7286587722915163,
+      "auprc": 0.7935882667317756,
+      "mean_predicted_probability": 0.42639755211105107,
+      "validation_threshold": 0.4264407753944397
+    },
+    "ovarian": {
+      "group": "ovarian",
+      "n_train": 3240,
+      "n_test": 134,
+      "training_time_seconds": 4618.6,
+      "mse": 1.95772643751106,
+      "rmse": 1.3991877777879065,
+      "r2": 0.8457295123713211,
+      "pearson_r": 0.9520550239842092,
+      "pearson_p": 9.190838470159526e-70,
+      "spearman_rho": 0.7463987928671938,
+      "spearman_p": 4.176114738502761e-25,
+      "accuracy": 0.7014925373134329,
+      "balanced_accuracy": 0.7410714285714286,
+      "f1_score": 0.6610169491525424,
+      "auroc": 0.9821428571428572,
+      "auprc": 0.975,
+      "mean_predicted_probability": 0.3767669432337827,
+      "validation_threshold": 0.6144262552261353
+    }
+  },
+  "summary": {
+    "n_groups_total": 6,
+    "n_groups_evaluated": 3,
+    "n_groups_skipped": 3,
+    "mean_auroc": 0.8987072737803078,
+    "std_auroc": 0.12024944492730595,
+    "mean_balanced_acc": 0.8183639887250642,
+    "std_balanced_acc": 0.11814496960897852
+  },
+  "references": [
+    "Sada Del Real et al., Brief Bioinf 2026 \u2014 cell-blind evaluation",
+    "Marks & Xu, J Cell Biochem 2009 \u2014 tissue-dependent SAHA response",
+    "Hartl et al., Cell Reports 2024 \u2014 HDAC inhibitor proteomics"
+  ]
+}

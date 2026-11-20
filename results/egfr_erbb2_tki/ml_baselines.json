@@ -1,0 +1,388 @@
+{
+  "case_study": "egfr_erbb2_tki",
+  "fairness_protocol": "v2 \u2014 all 7 issues fixed",
+  "fixes_applied": [
+    "FIX 1: RF max_depth capped at 15 (no unlimited depth)",
+    "FIX 2: GridSearchCV for ALL methods (RF, XGBoost, Ridge, ElasticNet)",
+    "FIX 3: Train on train_idx only (not train+val combined)",
+    "FIX 4: Each method computes own Youden's J threshold on val set",
+    "FIX 5: Same pooled embedding features as DL model",
+    "FIX 6: Separate classifiers per method",
+    "FIX 7: 5-fold CV evaluation"
+  ],
+  "single_split": {
+    "random_forest": {
+      "rmse": 1.5604104970140686,
+      "pearson_r": 0.649821878972858,
+      "spearman_rho": 0.5526500674516267,
+      "auroc": 0.8883587786259542,
+      "auprc_sensitive": 0.6616424695164854,
+      "balanced_acc": 0.7102417302798982,
+      "threshold_used": 0.6841341208703641,
+      "method": "random_forest",
+      "best_reg_params": {
+        "max_depth": 5,
+        "max_features": "sqrt",
+        "min_samples_leaf": 20,
+        "n_estimators": 200
+      },
+      "best_cls_params": {
+        "class_weight": "balanced",
+        "max_depth": 5,
+        "max_features": "sqrt",
+        "min_samples_leaf": 20,
+        "n_estimators": 200
+      },
+      "per_drug": {
+        "Afatinib": {
+          "n_samples": 29,
+          "pearson_r": 0.810535616746446,
+          "rmse": 1.9651050274118242,
+          "auroc": 0.855
+        },
+        "Erlotinib": {
+          "n_samples": 37,
+          "pearson_r": 0.569520094961976,
+          "rmse": 1.657192889581334,
+          "auroc": 0.9857142857142858
+        },
+        "Gefitinib": {
+          "n_samples": 28,
+          "pearson_r": -0.041318832755132,
+          "rmse": 1.2193091997189172,
+          "auroc": 0.6481481481481481
+        },
+        "Lapatinib": {
+          "n_samples": 9,
+          "pearson_r": -0.2994445059556465,
+          "rmse": 1.5366062379320724,
+          "auroc": 0.8125
+        },
+        "Osimertinib": {
+          "n_samples": 33,
+          "pearson_r": 0.6213291903691504,
+          "rmse": 1.2704685662496484,
+          "auroc": 0.9310344827586207
+        },
+        "Sapitinib": {
+          "n_samples": 7,
+          "pearson_r": 0.46462800408730937,
+          "rmse": 1.623241173954634,
+          "auroc": 0.0
+        }
+      },
+      "feature_dim": 2224,
+      "n_train": 665,
+      "n_test": 143,
+      "training_time_seconds": 6.86
+    },
+    "xgboost": {
+      "rmse": 1.3650645312750926,
+      "pearson_r": 0.7359920502356195,
+      "spearman_rho": 0.5976812706260533,
+      "auroc": 0.8937659033078881,
+      "auprc_sensitive": 0.7082260987239949,
+      "balanced_acc": 0.7872137404580153,
+      "threshold_used": 0.5045338869094849,
+      "method": "xgboost",
+      "best_reg_params": {
+        "colsample_bytree": 0.5,
+        "learning_rate": 0.05,
+        "max_depth": 2,
+        "n_estimators": 200,
+        "reg_alpha": 1.0,
+        "reg_lambda": 10.0,
+        "subsample": 0.7
+      },
+      "best_cls_params": {
+        "colsample_bytree": 0.5,
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "n_estimators": 200,
+        "reg_alpha": 1.0,
+        "reg_lambda": 10.0,
+        "subsample": 0.7
+      },
+      "per_drug": {
+        "Afatinib": {
+          "n_samples": 29,
+          "pearson_r": 0.7745146841701167,
+          "rmse": 1.629197526937855,
+          "auroc": 0.85
+        },
+        "Erlotinib": {
+          "n_samples": 37,
+          "pearson_r": 0.6880057703828577,
+          "rmse": 1.4014578213243747,
+          "auroc": 1.0
+        },
+        "Gefitinib": {
+          "n_samples": 28,
+          "pearson_r": 0.2656553145851647,
+          "rmse": 1.130652425047113,
+          "auroc": 0.7962962962962963
+        },
+        "Lapatinib": {
+          "n_samples": 9,
+          "pearson_r": -0.07371750025381237,
+          "rmse": 1.6221965868781052,
+          "auroc": 0.8125
+        },
+        "Osimertinib": {
+          "n_samples": 33,
+          "pearson_r": 0.6702511988137912,
+          "rmse": 1.1515912486756925,
+          "auroc": 0.9655172413793103
+        },
+        "Sapitinib": {
+          "n_samples": 7,
+          "pearson_r": 0.6262566848305624,
+          "rmse": 1.3928108197345086,
+          "auroc": 0.0
+        }
+      },
+      "feature_dim": 2224,
+      "n_train": 665,
+      "n_test": 143,
+      "training_time_seconds": 69.81
+    },
+    "ridge": {
+      "rmse": 1.387016758664187,
+      "pearson_r": 0.7155599332774839,
+      "spearman_rho": 0.5660616157759549,
+      "auroc": 0.9265267175572518,
+      "auprc_sensitive": 0.7295067209984752,
+      "balanced_acc": 0.7977099236641221,
+      "threshold_used": 0.6953491568565369,
+      "method": "ridge",
+      "best_reg_params": {
+        "alpha": 10.0
+      },
+      "best_cls_params": {
+        "C": 1.0
+      },
+      "per_drug": {
+        "Afatinib": {
+          "n_samples": 29,
+          "pearson_r": 0.7372806618036695,
+          "rmse": 1.6452536315755304,
+          "auroc": 0.88
+        },
+        "Erlotinib": {
+          "n_samples": 37,
+          "pearson_r": 0.7026968240046407,
+          "rmse": 1.3630998744131693,
+          "auroc": 1.0
+        },
+        "Gefitinib": {
+          "n_samples": 28,
+          "pearson_r": 0.13599570779988096,
+          "rmse": 1.250584871564457,
+          "auroc": 0.8703703703703703
+        },
+        "Lapatinib": {
+          "n_samples": 9,
+          "pearson_r": -0.150003887513247,
+          "rmse": 1.5513369479970183,
+          "auroc": 0.75
+        },
+        "Osimertinib": {
+          "n_samples": 33,
+          "pearson_r": 0.6508069644776404,
+          "rmse": 1.1939251669966535,
+          "auroc": 0.9827586206896551
+        },
+        "Sapitinib": {
+          "n_samples": 7,
+          "pearson_r": 0.6416207806719754,
+          "rmse": 1.4817130319623393,
+          "auroc": 0.0
+        }
+      },
+      "feature_dim": 2224,
+      "n_train": 665,
+      "n_test": 143,
+      "training_time_seconds": 1.13
+    },
+    "elastic_net": {
+      "rmse": 1.3914864261580595,
+      "pearson_r": 0.7197671138994158,
+      "spearman_rho": 0.583132129683653,
+      "auroc": 0.9271628498727735,
+      "auprc_sensitive": 0.7300390477503141,
+      "balanced_acc": 0.7938931297709924,
+      "threshold_used": 0.7060582637786865,
+      "method": "elastic_net",
+      "best_reg_params": {
+        "alpha": 0.1,
+        "l1_ratio": 0.1
+      },
+      "best_cls_params": {
+        "C": 1.0
+      },
+      "per_drug": {
+        "Afatinib": {
+          "n_samples": 29,
+          "pearson_r": 0.7964509410582572,
+          "rmse": 1.6105702500707162,
+          "auroc": 0.885
+        },
+        "Erlotinib": {
+          "n_samples": 37,
+          "pearson_r": 0.6872735902059021,
+          "rmse": 1.3909983178100818,
+          "auroc": 1.0
+        },
+        "Gefitinib": {
+          "n_samples": 28,
+          "pearson_r": 0.03150079551883017,
+          "rmse": 1.2560283288904057,
+          "auroc": 0.8703703703703703
+        },
+        "Lapatinib": {
+          "n_samples": 9,
+          "pearson_r": -0.2510394928896722,
+          "rmse": 1.5686902513277996,
+          "auroc": 0.8125
+        },
+        "Osimertinib": {
+          "n_samples": 33,
+          "pearson_r": 0.6431863103343401,
+          "rmse": 1.2100779135832864,
+          "auroc": 0.9827586206896551
+        },
+        "Sapitinib": {
+          "n_samples": 7,
+          "pearson_r": 0.49197453576392114,
+          "rmse": 1.4844595997728263,
+          "auroc": 0.0
+        }
+      },
+      "feature_dim": 2224,
+      "n_train": 665,
+      "n_test": 143,
+      "training_time_seconds": 87.12
+    }
+  },
+  "cross_validation": {
+    "random_forest": {
+      "pearson_r": {
+        "mean": 0.4839,
+        "std": 0.0691
+      },
+      "rmse": {
+        "mean": 1.6191,
+        "std": 0.068
+      },
+      "auroc": {
+        "mean": 0.805,
+        "std": 0.0457
+      },
+      "balanced_acc": {
+        "mean": 0.7007,
+        "std": 0.0411
+      },
+      "auprc_sensitive": {
+        "mean": 0.4218,
+        "std": 0.0971
+      },
+      "spearman_rho": {
+        "mean": 0.4727,
+        "std": 0.0557
+      },
+      "n_valid_folds": 5
+    },
+    "xgboost": {
+      "pearson_r": {
+        "mean": 0.6359,
+        "std": 0.0557
+      },
+      "rmse": {
+        "mean": 1.4306,
+        "std": 0.1131
+      },
+      "auroc": {
+        "mean": 0.8305,
+        "std": 0.0362
+      },
+      "balanced_acc": {
+        "mean": 0.7539,
+        "std": 0.0664
+      },
+      "auprc_sensitive": {
+        "mean": 0.4697,
+        "std": 0.0939
+      },
+      "spearman_rho": {
+        "mean": 0.566,
+        "std": 0.0584
+      },
+      "n_valid_folds": 5
+    },
+    "ridge": {
+      "pearson_r": {
+        "mean": 0.6292,
+        "std": 0.0515
+      },
+      "rmse": {
+        "mean": 1.4393,
+        "std": 0.1071
+      },
+      "auroc": {
+        "mean": 0.8042,
+        "std": 0.041
+      },
+      "balanced_acc": {
+        "mean": 0.6996,
+        "std": 0.0704
+      },
+      "auprc_sensitive": {
+        "mean": 0.471,
+        "std": 0.0719
+      },
+      "spearman_rho": {
+        "mean": 0.5352,
+        "std": 0.0557
+      },
+      "n_valid_folds": 5
+    },
+    "elastic_net": {
+      "pearson_r": {
+        "mean": 0.6222,
+        "std": 0.045
+      },
+      "rmse": {
+        "mean": 1.4496,
+        "std": 0.0974
+      },
+      "auroc": {
+        "mean": 0.8047,
+        "std": 0.036
+      },
+      "balanced_acc": {
+        "mean": 0.7042,
+        "std": 0.0823
+      },
+      "auprc_sensitive": {
+        "mean": 0.4487,
+        "std": 0.0398
+      },
+      "spearman_rho": {
+        "mean": 0.5323,
+        "std": 0.0466
+      },
+      "n_valid_folds": 5
+    }
+  },
+  "feature_dim": 2224,
+  "train_samples": 665,
+  "val_samples": 143,
+  "test_samples": 143,
+  "our_model_metrics": {
+    "pearson_r": 0.5969992315075127,
+    "rmse": 1.800220742189058,
+    "auroc": 0.8746819338422391,
+    "auprc_sensitive": 0.6638598324260089,
+    "balanced_acc": 0.8215648854961832
+  }
+}

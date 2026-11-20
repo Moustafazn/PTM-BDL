@@ -1,0 +1,73 @@
+{
+  "method": "Leave-One-Cell-Line-Out (LOCLO) by mutation class",
+  "reference": "Sada Del Real et al., Brief Bioinf 2026 \u2014 'cell-blind split for precision medicine'",
+  "grouping": "mutation_class (EGFR) / amplification_status (HER2)",
+  "min_group_size": 10,
+  "per_group_results": {
+    "HER2_other": {
+      "group": "HER2_other",
+      "n_train": 646,
+      "n_test": 305,
+      "training_time_seconds": 384.9,
+      "mse": 5.694620128540324,
+      "rmse": 2.386340321190656,
+      "r2": -0.7026891591711166,
+      "pearson_r": 0.31073390671345735,
+      "pearson_p": 2.98611424127669e-08,
+      "spearman_rho": 0.3265156387966871,
+      "spearman_p": 5.227440563353641e-09,
+      "accuracy": 0.9016393442622951,
+      "balanced_accuracy": 0.5,
+      "f1_score": 0.9482758620689655,
+      "auroc": 0.4943636363636364,
+      "auprc": 0.9103269580327343,
+      "mean_predicted_probability": 0.4495749459892023,
+      "validation_threshold": 0.4295288920402527
+    },
+    "wild_type": {
+      "group": "wild_type",
+      "n_train": 305,
+      "n_test": 646,
+      "training_time_seconds": 449.4,
+      "mse": 6.455729599980531,
+      "rmse": 2.5408127833393257,
+      "r2": -0.8834041114222702,
+      "pearson_r": 0.38134147281919606,
+      "pearson_p": 8.635968799994673e-24,
+      "spearman_rho": 0.40208938008413503,
+      "spearman_p": 1.6913773616462516e-26,
+      "accuracy": 0.9256965944272446,
+      "balanced_accuracy": 0.5,
+      "f1_score": 0.9614147909967846,
+      "auroc": 0.600891861761427,
+      "auprc": 0.9292109854227049,
+      "mean_predicted_probability": 0.4550974574805044,
+      "validation_threshold": 0.32902655005455017
+    }
+  },
+  "summary": {
+    "n_groups_total": 2,
+    "n_groups_evaluated": 2,
+    "n_groups_skipped": 0,
+    "skipped_groups": [],
+    "mean_pearson_r": 0.3460376897663267,
+    "std_pearson_r": 0.03530378305286935,
+    "min_pearson_r": 0.31073390671345735,
+    "max_pearson_r": 0.38134147281919606,
+    "mean_rmse": 2.463576552264991,
+    "std_rmse": 0.07723623107433486,
+    "mean_auroc": 0.5476277490625316,
+    "std_auroc": 0.05326411269889528,
+    "n_folds_with_auroc": 2,
+    "mean_balanced_acc": 0.5,
+    "std_balanced_acc": 0.0,
+    "random_split_pearson_r": 0.5969992315075127,
+    "random_split_auroc": 0.8746819338422391,
+    "generalization_gap_pcc": 0.25096154174118596,
+    "generalization_gap_auroc": 0.3270541847797075
+  },
+  "interpretation": {
+    "purpose": "Tests whether PTM-BDL generalizes to mutation classes not seen during training. A large generalization gap (>0.1 PCC) would indicate the model memorizes mutation-specific patterns rather than learning generalizable PTM\u2192resistance mapping.",
+    "expected_finding": "Some performance drop is expected and acceptable. The key question is whether PTM-BDL drops less than ML baselines, suggesting PTM features provide transferable biological signal."
+  }
+}

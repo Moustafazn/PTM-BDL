@@ -1,0 +1,806 @@
+{
+  "case_study": "k562_cml",
+  "overall_metrics": {
+    "mse": 5.383934025822075,
+    "rmse": 2.3203305854602,
+    "r2": 0.35779282226690245,
+    "pearson_r": 0.6192708811884378,
+    "pearson_p": 5.908536120426721e-170,
+    "spearman_rho": 0.5166258751932943,
+    "spearman_p": 8.280295089083178e-110,
+    "accuracy": 0.756722951844903,
+    "balanced_accuracy": 0.7505237249762797,
+    "f1_score": 0.8040302267002519,
+    "auroc": 0.7852711940303182,
+    "auprc": 0.7248826039019539,
+    "confusion_matrix": [
+      [
+        412,
+        365
+      ],
+      [
+        24,
+        798
+      ]
+    ],
+    "mean_predicted_probability": 0.38104522408098634,
+    "per_class": {
+      "sensitive": {
+        "precision": 0.944954128440367,
+        "recall": 0.5302445302445302,
+        "f1-score": 0.6793075020610058,
+        "support": 777.0
+      },
+      "resistant": {
+        "precision": 0.6861564918314703,
+        "recall": 0.9708029197080292,
+        "f1-score": 0.8040302267002519,
+        "support": 822.0
+      }
+    }
+  },
+  "per_drug": {
+    "Cytarabine": {
+      "mse": 5.719293657942523,
+      "rmse": 2.3915044758357706,
+      "r2": -0.10994854753506189,
+      "pearson_r": -0.00031144643589694695,
+      "pearson_p": 0.9954145724189258,
+      "spearman_rho": 0.02912096505076743,
+      "spearman_p": 0.5909409030669001,
+      "accuracy": 0.7521865889212828,
+      "balanced_accuracy": 0.49307153816647487,
+      "f1_score": 0.8580968280467446,
+      "auroc": 0.5300153433064825,
+      "auprc": 0.7800592539543871,
+      "confusion_matrix": [
+        [
+          1,
+          78
+        ],
+        [
+          7,
+          257
+        ]
+      ],
+      "mean_predicted_probability": 0.44507794364548287,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.125,
+          "recall": 0.012658227848101266,
+          "f1-score": 0.022988505747126436,
+          "support": 79.0
+        },
+        "resistant": {
+          "precision": 0.7671641791044777,
+          "recall": 0.9734848484848485,
+          "f1-score": 0.8580968280467446,
+          "support": 264.0
+        }
+      },
+      "mean_pred_ic50": 0.8981253633346225
+    },
+    "Dasatinib": {
+      "mse": 5.197398422588154,
+      "rmse": 2.279780345249988,
+      "r2": -0.013788430858701961,
+      "pearson_r": -0.049566907706174654,
+      "pearson_p": 0.30627086763069733,
+      "spearman_rho": -0.004678310277875994,
+      "spearman_p": 0.9231210002647736,
+      "accuracy": 0.7546728971962616,
+      "balanced_accuracy": 0.5,
+      "f1_score": 0.8601864181091877,
+      "auroc": 0.49994102904319626,
+      "auprc": 0.7483086496775339,
+      "confusion_matrix": [
+        [
+          0,
+          105
+        ],
+        [
+          0,
+          323
+        ]
+      ],
+      "mean_predicted_probability": 0.47399122609156313,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 105.0
+        },
+        "resistant": {
+          "precision": 0.7546728971962616,
+          "recall": 1.0,
+          "f1-score": 0.8601864181091877,
+          "support": 323.0
+        }
+      },
+      "mean_pred_ic50": 1.230660080909729
+    },
+    "Imatinib": {
+      "mse": 4.439133436679065,
+      "rmse": 2.106925114160222,
+      "r2": -0.22041466414908428,
+      "pearson_r": 0.0430432905368377,
+      "pearson_p": 0.9452125079775706,
+      "spearman_rho": -0.20519567041703085,
+      "spearman_p": 0.7405819415910722,
+      "accuracy": 0.6,
+      "balanced_accuracy": 0.5833333333333333,
+      "f1_score": 0.5,
+      "auroc": 0.5,
+      "auprc": 0.7,
+      "confusion_matrix": [
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "mean_predicted_probability": 0.4502542018890381,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.6666666666666666,
+          "recall": 0.6666666666666666,
+          "f1-score": 0.6666666666666666,
+          "support": 3.0
+        },
+        "resistant": {
+          "precision": 0.5,
+          "recall": 0.5,
+          "f1-score": 0.5,
+          "support": 2.0
+        }
+      },
+      "mean_pred_ic50": 0.950908100605011
+    },
+    "Methotrexate": {
+      "mse": 6.9285307807167085,
+      "rmse": 2.6322102462981007,
+      "r2": -0.09814711655044461,
+      "pearson_r": -0.04747792724378815,
+      "pearson_p": 0.3466302889770676,
+      "spearman_rho": -0.01941330055479359,
+      "spearman_p": 0.7005002999210518,
+      "accuracy": 0.5341772151898734,
+      "balanced_accuracy": 0.49341663654670315,
+      "f1_score": 0.695364238410596,
+      "auroc": 0.5274694067227759,
+      "auprc": 0.5536497347617076,
+      "confusion_matrix": [
+        [
+          1,
+          180
+        ],
+        [
+          4,
+          210
+        ]
+      ],
+      "mean_predicted_probability": 0.44509252445607245,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.2,
+          "recall": 0.0055248618784530384,
+          "f1-score": 0.010752688172043012,
+          "support": 181.0
+        },
+        "resistant": {
+          "precision": 0.5384615384615384,
+          "recall": 0.9813084112149533,
+          "f1-score": 0.695364238410596,
+          "support": 214.0
+        }
+      },
+      "mean_pred_ic50": 0.8983852475504331
+    },
+    "Paclitaxel": {
+      "mse": 3.8869056133305167,
+      "rmse": 1.971523678105469,
+      "r2": -0.2600423745933478,
+      "pearson_r": -0.013346300730534482,
+      "pearson_p": 0.783074090453736,
+      "spearman_rho": -0.0292248414714657,
+      "spearman_p": 0.5465294095348565,
+      "accuracy": 0.955607476635514,
+      "balanced_accuracy": 0.5,
+      "f1_score": 0.0,
+      "auroc": 0.271972719083773,
+      "auprc": 0.03208518198731354,
+      "confusion_matrix": [
+        [
+          409,
+          0
+        ],
+        [
+          19,
+          0
+        ]
+      ],
+      "mean_predicted_probability": 0.1768553275789056,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.955607476635514,
+          "recall": 1.0,
+          "f1-score": 0.977299880525687,
+          "support": 409.0
+        },
+        "resistant": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 19.0
+        }
+      },
+      "mean_pred_ic50": -3.9328585952241846
+    }
+  },
+  "drug_group_metrics": {
+    "TKI": {
+      "mse": 5.188640522911153,
+      "rmse": 2.2778587583322967,
+      "r2": -0.011907767388389612,
+      "pearson_r": -0.03743322778004958,
+      "pearson_p": 0.43718490622062206,
+      "spearman_rho": 0.01502346540228475,
+      "spearman_p": 0.7552442215817468,
+      "accuracy": 0.7528868360277137,
+      "balanced_accuracy": 0.5077207977207977,
+      "f1_score": 0.8582781456953642,
+      "auroc": 0.5076638176638176,
+      "auprc": 0.744582594304331,
+      "confusion_matrix": [
+        [
+          2,
+          106
+        ],
+        [
+          1,
+          324
+        ]
+      ],
+      "mean_predicted_probability": 0.47371725294110956,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.6666666666666666,
+          "recall": 0.018518518518518517,
+          "f1-score": 0.036036036036036036,
+          "support": 108.0
+        },
+        "resistant": {
+          "precision": 0.7534883720930232,
+          "recall": 0.9969230769230769,
+          "f1-score": 0.8582781456953642,
+          "support": 325.0
+        }
+      }
+    },
+    "chemo": {
+      "mse": 4.702074696359456,
+      "rmse": 2.168426779109559,
+      "r2": 0.5014966602459796,
+      "pearson_r": 0.7585665481471269,
+      "pearson_p": 3.369814671104566e-145,
+      "spearman_rho": 0.6501540845099326,
+      "spearman_p": 8.014119830877534e-94,
+      "accuracy": 0.8728923476005188,
+      "balanced_accuracy": 0.8854884724555407,
+      "f1_score": 0.8434504792332268,
+      "auroc": 0.8776682789781614,
+      "auprc": 0.7554422754836044,
+      "confusion_matrix": [
+        [
+          409,
+          79
+        ],
+        [
+          19,
+          264
+        ]
+      ],
+      "mean_predicted_probability": 0.29618191643679653,
+      "per_class": {
+        "sensitive": {
+          "precision": 0.955607476635514,
+          "recall": 0.8381147540983607,
+          "f1-score": 0.8930131004366813,
+          "support": 488.0
+        },
+        "resistant": {
+          "precision": 0.7696793002915452,
+          "recall": 0.9328621908127208,
+          "f1-score": 0.8434504792332268,
+          "support": 283.0
+        }
+      }
+    }
+  },
+  "published_ic50_benchmarks": {
+    "Dasatinib": {
+      "predicted_ln_ic50": 1.230660080909729,
+      "published_ln_ic50": -7.13,
+      "published_ic50_nM": 0.8,
+      "reference": "Shah et al., Science 2004 (PMID 15256107)"
+    },
+    "Imatinib": {
+      "predicted_ln_ic50": 0.950908100605011,
+      "published_ln_ic50": -1.35,
+      "published_ic50_nM": 260,
+      "reference": "Druker et al., NEJM 2006 (PMID 16481636)"
+    },
+    "Cytarabine": {
+      "predicted_ln_ic50": 0.8981253633346225,
+      "published_ln_ic50": -1.61,
+      "published_ic50_nM": 200,
+      "reference": "Momparler, Pharmacol Ther 2013 (PMID 23583331)"
+    },
+    "Paclitaxel": {
+      "predicted_ln_ic50": -3.9328585952241846,
+      "published_ln_ic50": -4.61,
+      "published_ic50_nM": 10,
+      "reference": "Mujagic et al., Leuk Res 2002 (PMID 12191564)"
+    }
+  },
+  "leakage_analysis": {
+    "n_samples": 10656,
+    "n_train": 7458,
+    "n_val": 1599,
+    "n_test": 1599,
+    "ptm_baseline_unique": 17,
+    "ptm_baseline_diversity": 0.0016,
+    "ptm_delta_unique": 12,
+    "ptm_delta_diversity": 0.0011,
+    "ptm_all_unique": 51,
+    "ptm_all_diversity": 0.0048,
+    "cell_line_overlap": {
+      "n_train_cells": 967,
+      "n_val_cells": 810,
+      "n_test_cells": 800,
+      "train_test_overlap": 800,
+      "train_val_overlap": 810,
+      "note": "Cell-line overlap is expected for drug-wise evaluation; cold-cell evaluation (Q4) eliminates this overlap."
+    },
+    "drug_overlap": {
+      "n_train_drugs": 5,
+      "n_test_drugs": 5,
+      "train_test_overlap": 5,
+      "note": "Drug overlap is expected for standard splits; cold-drug LODO evaluation (Q4) eliminates this overlap."
+    },
+    "ptm_provenance": {
+      "n_measured_high_conf": 15,
+      "n_propagated_lower_conf": 10641,
+      "frac_measured": 0.0014,
+      "test_measured": 3,
+      "test_propagated": 1596
+    },
+    "institutional_separation": {
+      "ptm_data_source": "DrugPTM-Bench (Xie lab, phosphoproteomics, mass spectrometry)",
+      "ic50_data_source": "GDSC2 (Sanger Institute, pharmacology, viability assays)",
+      "modality_independence": true,
+      "explanation": "PTM measurements (phosphoproteomics via LC-MS/MS) and IC50 labels (dose-response viability assays) are from different experimental modalities performed at different institutions. No shared measurement apparatus or experimental protocol."
+    },
+    "constant_channels": {
+      "n_constant": 7,
+      "columns": [
+        "delta_ptm_Y134",
+        "delta_ptm_Y245",
+        "delta_ptm_Y253",
+        "delta_ptm_Y412",
+        "delta_ptm_S69",
+        "delta_ptm_T735",
+        "delta_ptm_S861"
+      ],
+      "note": "Constant channels contribute zero IG attribution and should be documented (e.g., EGFR glyco baseline is uniformly 1.0 for all samples \u2014 see Q3 ablation for their exclusion)."
+    }
+  },
+  "calibration": {
+    "overall_ece": {
+      "ece": 0.2039379906643175,
+      "mce": 0.23006214080561338,
+      "n_bins": 10,
+      "bin_edges": [
+        0.0,
+        0.1,
+        0.2,
+        0.30000000000000004,
+        0.4,
+        0.5,
+        0.6000000000000001,
+        0.7000000000000001,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "bin_accs": [
+        0.0,
+        0.04439252336448598,
+        0.0,
+        0.0,
+        0.6857386848847139,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bin_confs": [
+        0.0,
+        0.17685532754408978,
+        0.0,
+        0.0,
+        0.4556765440791005,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bin_counts": [
+        0,
+        428,
+        0,
+        0,
+        1171,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "per_drug_ece": {
+      "overall": {
+        "ece": 0.2039379906643175,
+        "mce": 0.23006214080561338,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.04439252336448598,
+          0.0,
+          0.0,
+          0.6857386848847139,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0,
+          0.17685532754408978,
+          0.0,
+          0.0,
+          0.4556765440791005,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          0,
+          428,
+          0,
+          0,
+          1171,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Cytarabine": {
+        "ece": 0.32460005455392443,
+        "mce": 0.32460005455392443,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.7696793002915452,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.44507924573762075,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          0,
+          0,
+          0,
+          0,
+          343,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "n_samples": 343
+      },
+      "Dasatinib": {
+        "ece": 0.28068067467658314,
+        "mce": 0.28068067467658314,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.7546728971962616,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.4739922225196785,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          0,
+          0,
+          0,
+          0,
+          428,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "n_samples": 428
+      },
+      "Imatinib": {
+        "ece": 0.05086451172828671,
+        "mce": 0.05086451172828671,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.45086451172828673,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          0,
+          0,
+          0,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "n_samples": 5
+      },
+      "Methotrexate": {
+        "ece": 0.09667833409731902,
+        "mce": 0.09667833409731902,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.5417721518987342,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.44509381780141516,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          0,
+          0,
+          0,
+          0,
+          395,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "n_samples": 395
+      },
+      "Paclitaxel": {
+        "ece": 0.1324628041796038,
+        "mce": 0.1324628041796038,
+        "n_bins": 10,
+        "bin_edges": [
+          0.0,
+          0.1,
+          0.2,
+          0.30000000000000004,
+          0.4,
+          0.5,
+          0.6000000000000001,
+          0.7000000000000001,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "bin_accs": [
+          0.0,
+          0.04439252336448598,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_confs": [
+          0.0,
+          0.17685532754408978,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bin_counts": [
+          0,
+          428,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "n_samples": 428
+      }
+    }
+  },
+  "ig_scale_audit": {
+    "ig_value_ranges": {},
+    "issues_found": []
+  },
+  "frozen_encoders": {
+    "trainable": 15795395,
+    "frozen": "ESM-2(650M)+ChemBERTa(77M)+GearNet all FROZEN"
+  },
+  "references": {
+    "dasatinib_potency": "Shah et al., Science 2004 (PMID 15256107)",
+    "imatinib_cml": "Druker et al., NEJM 2006 (PMID 16481636)",
+    "dasatinib_vs_imatinib": "O'Hare et al., Blood 2005 (PMID 15256422)",
+    "cml_guidelines": "Soverini et al., Haematologica 2024",
+    "eln_management": "Hochhaus et al., Leukemia 2020 (PMID 31988391)",
+    "cytarabine": "Momparler, Pharmacol Ther 2013 (PMID 23583331)",
+    "primary_data": "Badkul et al., DrugPTM-Bench 2024"
+  }
+}

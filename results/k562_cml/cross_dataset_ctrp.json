@@ -1,0 +1,41 @@
+{
+  "method": "Cross-dataset (GDSC2 -> CTRPv2)",
+  "description": "GDSC-trained model predictions evaluated against CTRPv2 IC50 ground truth for overlapping (cell_line, drug) pairs. Ref: Basu et al. Cell 2013; Rees et al. Nat Chem Biol 2016.",
+  "ctrp_source": "/Users/moustafazein/PycharmProjects/PTM-BDL/data/processed/ctrp/ctrp_drug_responses.csv",
+  "overall": {
+    "n_samples": 3789
+  },
+  "per_drug": {
+    "Cytarabine": {
+      "n_samples": 615,
+      "pred_vs_ctrp_pearson_r": 0.005620319634017958,
+      "gdsc_vs_ctrp_pearson_r": 0.6474336741489252
+    },
+    "Dasatinib": {
+      "n_samples": 1542,
+      "pred_vs_ctrp_pearson_r": 0.009889267117895383,
+      "gdsc_vs_ctrp_pearson_r": 0.7405889448149631
+    },
+    "Imatinib": {
+      "n_samples": 18,
+      "pred_vs_ctrp_pearson_r": 0.12003637240899767,
+      "gdsc_vs_ctrp_pearson_r": 0.9615768776941596
+    },
+    "Methotrexat": {
+      "n_samples": 774,
+      "pred_vs_ctrp_pearson_r": 0.001924280330377148,
+      "gdsc_vs_ctrp_pearson_r": 0.2632940456116146
+    },
+    "Paclitaxel": {
+      "n_samples": 840
+    }
+  },
+  "drugs_in_overlap": [
+    "Cytarabine",
+    "Dasatinib",
+    "Imatinib",
+    "Methotrexat",
+    "Paclitaxel"
+  ],
+  "n_overlap_pairs": 3789
+}

@@ -1,0 +1,42 @@
+{
+  "method": "Cross-dataset (GDSC2 -> CTRPv2)",
+  "description": "GDSC-trained model predictions evaluated against CTRPv2 IC50 ground truth for overlapping (cell_line, drug) pairs. Ref: Basu et al. Cell 2013; Rees et al. Nat Chem Biol 2016.",
+  "ctrp_source": "/Users/moustafazein/PycharmProjects/PTM-BDL/data/processed/ctrp/ctrp_drug_responses.csv",
+  "overall": {
+    "n_samples": 314,
+    "pred_vs_ctrp_pearson_r": 0.450198953208953,
+    "pred_vs_ctrp_spearman_rho": 0.5053435573098322,
+    "pred_vs_ctrp_rmse": 2.743546177325965,
+    "gdsc_vs_ctrp_pearson_r": 0.6129988805541536,
+    "gdsc_vs_ctrp_spearman_rho": 0.5507900007849132
+  },
+  "per_drug": {
+    "Afatinib": {
+      "n_samples": 121,
+      "pred_vs_ctrp_pearson_r": 0.6493574468635028,
+      "gdsc_vs_ctrp_pearson_r": 0.7719980964782386
+    },
+    "Erlotinib": {
+      "n_samples": 60,
+      "pred_vs_ctrp_pearson_r": 0.32906543174507974,
+      "gdsc_vs_ctrp_pearson_r": 0.5354839414794021
+    },
+    "Gefitinib": {
+      "n_samples": 110,
+      "pred_vs_ctrp_pearson_r": 0.19097328689892815,
+      "gdsc_vs_ctrp_pearson_r": 0.4102045896030164
+    },
+    "Lapatinib": {
+      "n_samples": 23,
+      "pred_vs_ctrp_pearson_r": 0.49888762940938614,
+      "gdsc_vs_ctrp_pearson_r": 0.7075669725137752
+    }
+  },
+  "drugs_in_overlap": [
+    "Afatinib",
+    "Erlotinib",
+    "Gefitinib",
+    "Lapatinib"
+  ],
+  "n_overlap_pairs": 314
+}

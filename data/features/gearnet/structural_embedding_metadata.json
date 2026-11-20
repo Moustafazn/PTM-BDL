@@ -1,0 +1,131 @@
+{
+  "backend": "fallback",
+  "backend_description": "Basic GNN (Xavier init)",
+  "pretrained": false,
+  "output_dim": 512,
+  "structures": {
+    "2GS6": {
+      "embeddings_shape": [
+        311,
+        512
+      ],
+      "num_residues": 311,
+      "backend": "fallback",
+      "mutations": [],
+      "drug": null
+    },
+    "2JIT": {
+      "embeddings_shape": [
+        312,
+        512
+      ],
+      "num_residues": 312,
+      "backend": "fallback",
+      "mutations": [
+        "L858R"
+      ],
+      "drug": null
+    },
+    "4HJO": {
+      "embeddings_shape": [
+        278,
+        512
+      ],
+      "num_residues": 278,
+      "backend": "fallback",
+      "mutations": [
+        "E746_A750del"
+      ],
+      "drug": null
+    },
+    "5EDP": {
+      "embeddings_shape": [
+        295,
+        512
+      ],
+      "num_residues": 295,
+      "backend": "fallback",
+      "mutations": [
+        "L858R",
+        "T790M"
+      ],
+      "drug": null
+    },
+    "3IKA": {
+      "embeddings_shape": [
+        310,
+        512
+      ],
+      "num_residues": 310,
+      "backend": "fallback",
+      "mutations": [
+        "T790M"
+      ],
+      "drug": "WZ4002"
+    },
+    "6LUD": {
+      "embeddings_shape": [
+        310,
+        512
+      ],
+      "num_residues": 310,
+      "backend": "fallback",
+      "mutations": [
+        "L858R",
+        "T790M",
+        "C797S"
+      ],
+      "drug": "osimertinib"
+    },
+    "2ITY": {
+      "embeddings_shape": [
+        300,
+        512
+      ],
+      "num_residues": 300,
+      "backend": "fallback",
+      "mutations": [],
+      "drug": "gefitinib"
+    },
+    "4ZAU": {
+      "embeddings_shape": [
+        283,
+        512
+      ],
+      "num_residues": 283,
+      "backend": "fallback",
+      "mutations": [],
+      "drug": "osimertinib"
+    },
+    "4G5J": {
+      "embeddings_shape": [
+        307,
+        512
+      ],
+      "num_residues": 307,
+      "backend": "fallback",
+      "mutations": [],
+      "drug": "afatinib"
+    },
+    "3PP0": {
+      "embeddings_shape": [
+        296,
+        512
+      ],
+      "num_residues": 296,
+      "backend": "fallback",
+      "mutations": [],
+      "drug": null
+    },
+    "3RCD": {
+      "embeddings_shape": [
+        281,
+        512
+      ],
+      "num_residues": 281,
+      "backend": "fallback",
+      "mutations": [],
+      "drug": "lapatinib"
+    }
+  }
+}

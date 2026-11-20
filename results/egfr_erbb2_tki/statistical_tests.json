@@ -1,0 +1,517 @@
+{
+  "method": "Statistical rigor for Nature Methods benchmarking",
+  "tests_performed": [
+    "bootstrap_95ci",
+    "delong_auroc",
+    "wilcoxon_signed_rank",
+    "benjamini_hochberg",
+    "ablation_effect_sizes"
+  ],
+  "bootstrap_cis": {
+    "our_model_pearson_r": {
+      "point": 0.6107611751079313,
+      "ci_lower": 0.46530354199627333,
+      "ci_upper": 0.7245946238569416,
+      "std": 0.0679598862202271,
+      "n_boot": 1000,
+      "n_test": 143,
+      "method": "bootstrap_1000"
+    },
+    "our_model_rmse": {
+      "point": 1.7223983576104775,
+      "ci_lower": 1.516491714566369,
+      "ci_upper": 1.9214667331302273,
+      "std": 0.10269068283703064,
+      "n_boot": 1000,
+      "n_test": 143,
+      "method": "bootstrap_1000"
+    },
+    "our_model_auroc": {
+      "point": 0.8912213740458015,
+      "ci_lower": 0.7666666666666667,
+      "ci_upper": 0.9873963537186529,
+      "std": 0.0572849843014585,
+      "n_boot": 1000,
+      "n_test": 143,
+      "method": "bootstrap_1000"
+    },
+    "our_model_auprc_sensitive": {
+      "point": 0.6801904176904178,
+      "ci_lower": 0.4046668951086972,
+      "ci_upper": 0.9049337121212121,
+      "std": 0.1272404666456368,
+      "n_boot": 1000,
+      "n_test": 143,
+      "method": "bootstrap_1000"
+    },
+    "elastic_net_pearson_r": {
+      "point": 0.7149787481461323,
+      "ci_lower": 0.5794552500894145,
+      "ci_upper": 0.7998361559166836,
+      "std": 0.05911572123122437,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "elastic_net_rmse": {
+      "point": 1.3833002084959078,
+      "ci_lower": 1.1803483953232106,
+      "ci_upper": 1.5753350352932742,
+      "std": 0.09825261606147763,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "elastic_net_auroc": {
+      "point": 0.9424300254452926,
+      "ci_lower": 0.8854597856030664,
+      "ci_upper": 0.9879136530566426,
+      "std": 0.026747142115405687,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "elastic_net_auprc_sensitive": {
+      "point": 0.7359904009360531,
+      "ci_lower": 0.46205357142857145,
+      "ci_upper": 0.925161142606963,
+      "std": 0.11464723266977042,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "ridge_pearson_r": {
+      "point": 0.7151114619702779,
+      "ci_lower": 0.5788351877188795,
+      "ci_upper": 0.8001656823355694,
+      "std": 0.05902264216387489,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "ridge_rmse": {
+      "point": 1.3827536750042555,
+      "ci_lower": 1.1806904468716206,
+      "ci_upper": 1.573460709600263,
+      "std": 0.09794892935045026,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "ridge_auroc": {
+      "point": 0.9424300254452926,
+      "ci_lower": 0.8854597856030664,
+      "ci_upper": 0.9879136530566426,
+      "std": 0.026747142115405687,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "ridge_auprc_sensitive": {
+      "point": 0.7359904009360531,
+      "ci_lower": 0.46205357142857145,
+      "ci_upper": 0.925161142606963,
+      "std": 0.11464723266977042,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "random_forest_pearson_r": {
+      "point": 0.6980775716043909,
+      "ci_lower": 0.5484330547197261,
+      "ci_upper": 0.7946652172365343,
+      "std": 0.06575919750641443,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "random_forest_rmse": {
+      "point": 1.4110362479321599,
+      "ci_lower": 1.201449881741757,
+      "ci_upper": 1.6063106020071412,
+      "std": 0.10045259025334861,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "random_forest_auroc": {
+      "point": 0.888676844783715,
+      "ci_lower": 0.7559168685645062,
+      "ci_upper": 0.9879402089783281,
+      "std": 0.05987520763635454,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    },
+    "random_forest_auprc_sensitive": {
+      "point": 0.7004711655376065,
+      "ci_lower": 0.41966463144819066,
+      "ci_upper": 0.9136181828212612,
+      "std": 0.12329399054663503,
+      "n_boot": 1000,
+      "method": "bootstrap_1000"
+    }
+  },
+  "delong_tests": {
+    "ours_vs_elastic_net": {
+      "auroc_ours": 0.8912213740458015,
+      "auroc_baseline": 0.9424300254452926,
+      "diff": -0.051208651399491156,
+      "z_statistic": -1.367597389740666,
+      "p_value": 0.17143813396832908,
+      "significant_at_005": false,
+      "method": "delong_paired"
+    },
+    "ours_vs_ridge": {
+      "auroc_ours": 0.8912213740458015,
+      "auroc_baseline": 0.9424300254452926,
+      "diff": -0.051208651399491156,
+      "z_statistic": -1.367597389740666,
+      "p_value": 0.17143813396832908,
+      "significant_at_005": false,
+      "method": "delong_paired"
+    },
+    "ours_vs_random_forest": {
+      "auroc_ours": 0.8912213740458015,
+      "auroc_baseline": 0.888676844783715,
+      "diff": 0.0025445292620864812,
+      "z_statistic": 0.07906542991712907,
+      "p_value": 0.9369805803320137,
+      "significant_at_005": false,
+      "method": "delong_paired"
+    }
+  },
+  "wilcoxon_tests": {
+    "ours_vs_random_forest_pearson_r": {
+      "n_drugs": 6,
+      "drugs": [
+        "Afatinib",
+        "Erlotinib",
+        "Gefitinib",
+        "Lapatinib",
+        "Osimertinib",
+        "Sapitinib"
+      ],
+      "our_values": [
+        0.7344157540990507,
+        0.6147481409227721,
+        -0.025538775266615965,
+        -0.24862846838385116,
+        0.5754576365654581,
+        0.3475743783619764
+      ],
+      "baseline_values": [
+        0.6386196187270505,
+        0.6835447316769876,
+        0.2661684398938427,
+        -0.2148317862092765,
+        0.6941283551833333,
+        0.6424940128445992
+      ],
+      "differences": [
+        0.09579613537200016,
+        -0.06879659075421551,
+        -0.29170721516045867,
+        -0.033796682174574655,
+        -0.11867071861787515,
+        -0.29491963448262276
+      ],
+      "metric": "pearson_r",
+      "statistic": 3.0,
+      "p_value": 0.15625
+    },
+    "ours_vs_random_forest_auroc": {
+      "n_drugs": 6,
+      "drugs": [
+        "Afatinib",
+        "Erlotinib",
+        "Gefitinib",
+        "Lapatinib",
+        "Osimertinib",
+        "Sapitinib"
+      ],
+      "our_values": [
+        0.79,
+        1.0,
+        0.5740740740740741,
+        0.3125,
+        0.9224137931034483,
+        0.0
+      ],
+      "baseline_values": [
+        0.84,
+        1.0,
+        0.8703703703703703,
+        0.8125,
+        0.9482758620689655,
+        0.0
+      ],
+      "differences": [
+        -0.04999999999999993,
+        0.0,
+        -0.2962962962962963,
+        -0.5,
+        -0.025862068965517238,
+        0.0
+      ],
+      "metric": "auroc",
+      "statistic": 0.0,
+      "p_value": 0.125
+    },
+    "ours_vs_ridge_pearson_r": {
+      "n_drugs": 6,
+      "drugs": [
+        "Afatinib",
+        "Erlotinib",
+        "Gefitinib",
+        "Lapatinib",
+        "Osimertinib",
+        "Sapitinib"
+      ],
+      "our_values": [
+        0.7344157540990507,
+        0.6147481409227721,
+        -0.025538775266615965,
+        -0.24862846838385116,
+        0.5754576365654581,
+        0.3475743783619764
+      ],
+      "baseline_values": [
+        0.7344485687180283,
+        0.7007913406650802,
+        0.13871271283183223,
+        -0.1806494459071127,
+        0.661282058017031,
+        0.6330673713774518
+      ],
+      "differences": [
+        -3.281461897763904e-05,
+        -0.08604319974230812,
+        -0.1642514880984482,
+        -0.06797902247673845,
+        -0.08582442145157287,
+        -0.2854929930154754
+      ],
+      "metric": "pearson_r",
+      "statistic": 0.0,
+      "p_value": 0.03125
+    },
+    "ours_vs_ridge_auroc": {
+      "n_drugs": 6,
+      "drugs": [
+        "Afatinib",
+        "Erlotinib",
+        "Gefitinib",
+        "Lapatinib",
+        "Osimertinib",
+        "Sapitinib"
+      ],
+      "our_values": [
+        0.79,
+        1.0,
+        0.5740740740740741,
+        0.3125,
+        0.9224137931034483,
+        0.0
+      ],
+      "baseline_values": [
+        0.88,
+        1.0,
+        0.8703703703703703,
+        0.875,
+        0.9913793103448276,
+        0.0
+      ],
+      "differences": [
+        -0.08999999999999997,
+        0.0,
+        -0.2962962962962963,
+        -0.5625,
+        -0.06896551724137934,
+        0.0
+      ],
+      "metric": "auroc",
+      "statistic": 0.0,
+      "p_value": 0.125
+    },
+    "ours_vs_elastic_net_pearson_r": {
+      "n_drugs": 6,
+      "drugs": [
+        "Afatinib",
+        "Erlotinib",
+        "Gefitinib",
+        "Lapatinib",
+        "Osimertinib",
+        "Sapitinib"
+      ],
+      "our_values": [
+        0.7344157540990507,
+        0.6147481409227721,
+        -0.025538775266615965,
+        -0.24862846838385116,
+        0.5754576365654581,
+        0.3475743783619764
+      ],
+      "baseline_values": [
+        0.7330529182050195,
+        0.7013436379915925,
+        0.13545595351236275,
+        -0.17877213301157677,
+        0.6600990847226096,
+        0.6330460652740069
+      ],
+      "differences": [
+        0.001362835894031189,
+        -0.08659549706882042,
+        -0.16099472877897872,
+        -0.0698563353722744,
+        -0.08464144815715147,
+        -0.28547168691203045
+      ],
+      "metric": "pearson_r",
+      "statistic": 1.0,
+      "p_value": 0.0625
+    },
+    "ours_vs_elastic_net_auroc": {
+      "n_drugs": 6,
+      "drugs": [
+        "Afatinib",
+        "Erlotinib",
+        "Gefitinib",
+        "Lapatinib",
+        "Osimertinib",
+        "Sapitinib"
+      ],
+      "our_values": [
+        0.79,
+        1.0,
+        0.5740740740740741,
+        0.3125,
+        0.9224137931034483,
+        0.0
+      ],
+      "baseline_values": [
+        0.88,
+        1.0,
+        0.8703703703703703,
+        0.875,
+        0.9913793103448276,
+        0.0
+      ],
+      "differences": [
+        -0.08999999999999997,
+        0.0,
+        -0.2962962962962963,
+        -0.5625,
+        -0.06896551724137934,
+        0.0
+      ],
+      "metric": "auroc",
+      "statistic": 0.0,
+      "p_value": 0.125
+    }
+  },
+  "bh_correction": {
+    "wilcoxon_ours_vs_ridge_pearson_r": {
+      "raw_p": 0.03125,
+      "adjusted_p": 0.1928679007143702,
+      "rank": 1,
+      "significant": false,
+      "bh_critical": 0.005555555555555556
+    },
+    "wilcoxon_ours_vs_elastic_net_pearson_r": {
+      "raw_p": 0.0625,
+      "adjusted_p": 0.1928679007143702,
+      "rank": 2,
+      "significant": false,
+      "bh_critical": 0.011111111111111112
+    },
+    "wilcoxon_ours_vs_random_forest_auroc": {
+      "raw_p": 0.125,
+      "adjusted_p": 0.1928679007143702,
+      "rank": 3,
+      "significant": false,
+      "bh_critical": 0.016666666666666666
+    },
+    "wilcoxon_ours_vs_ridge_auroc": {
+      "raw_p": 0.125,
+      "adjusted_p": 0.1928679007143702,
+      "rank": 4,
+      "significant": false,
+      "bh_critical": 0.022222222222222223
+    },
+    "wilcoxon_ours_vs_elastic_net_auroc": {
+      "raw_p": 0.125,
+      "adjusted_p": 0.1928679007143702,
+      "rank": 5,
+      "significant": false,
+      "bh_critical": 0.02777777777777778
+    },
+    "wilcoxon_ours_vs_random_forest_pearson_r": {
+      "raw_p": 0.15625,
+      "adjusted_p": 0.1928679007143702,
+      "rank": 6,
+      "significant": false,
+      "bh_critical": 0.03333333333333333
+    },
+    "delong_ours_vs_elastic_net": {
+      "raw_p": 0.17143813396832908,
+      "adjusted_p": 0.1928679007143702,
+      "rank": 7,
+      "significant": false,
+      "bh_critical": 0.03888888888888889
+    },
+    "delong_ours_vs_ridge": {
+      "raw_p": 0.17143813396832908,
+      "adjusted_p": 0.1928679007143702,
+      "rank": 8,
+      "significant": false,
+      "bh_critical": 0.044444444444444446
+    },
+    "delong_ours_vs_random_forest": {
+      "raw_p": 0.9369805803320137,
+      "adjusted_p": 0.9369805803320137,
+      "rank": 9,
+      "significant": false,
+      "bh_critical": 0.05
+    }
+  },
+  "ablation_effects": {
+    "ptm_gain_auroc": {
+      "effect_size": 0.0573,
+      "direction": "positive",
+      "meaningful": true
+    },
+    "ptm_gain_auprc_sensitive": {
+      "effect_size": 0.0819,
+      "direction": "positive",
+      "meaningful": true
+    },
+    "ptm_gain_bacc": {
+      "effect_size": 0.0111,
+      "direction": "positive",
+      "meaningful": true
+    },
+    "ptm_gain_f1_macro": {
+      "effect_size": -0.0256,
+      "direction": "negative",
+      "meaningful": true
+    },
+    "phospho_marginal_auroc": {
+      "effect_size": -0.0184,
+      "direction": "negative",
+      "meaningful": true
+    },
+    "glyco_marginal_auroc": {
+      "effect_size": 0.0274,
+      "direction": "positive",
+      "meaningful": true
+    },
+    "typed_attention_marginal_auroc": {
+      "effect_size": 0.0274,
+      "direction": "positive",
+      "meaningful": true
+    }
+  },
+  "summary": {
+    "n_tests_performed": 5,
+    "delong_significant": "0/3",
+    "bh_significant": "0/9",
+    "tests_list": [
+      "bootstrap_95ci",
+      "delong_auroc",
+      "wilcoxon_signed_rank",
+      "benjamini_hochberg",
+      "ablation_effect_sizes"
+    ]
+  }
+}
